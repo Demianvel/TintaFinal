@@ -1,0 +1,38 @@
+{
+  "name": "TintaFinal",
+  "servePort": 34872,
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Shared": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "GameServer": {
+        "$path": "src/server"
+      }
+    },
+    "StarterPlayer": {
+      "StarterPlayerScripts": {
+        "GameClient": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "StreamingEnabled": true
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "Brightness": 2,
+        "ClockTime": 14,
+        "EnvironmentDiffuseScale": 0.5,
+        "EnvironmentSpecularScale": 0.5,
+        "GlobalShadows": true
+      }
+    }
+  }
+}
