@@ -1,5 +1,6 @@
 name: GitHub Actions Probe
 
+# Revisión 2: comprobación efectiva del disparador push.
 on:
   push:
     branches: [main]
