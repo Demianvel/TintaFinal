@@ -13,6 +13,7 @@ import cairosvg
 import requests
 
 API_ROOT = "https://apis.roblox.com/assets/v1"
+USERS_API = "https://users.roblox.com/v1/usernames/users"
 OUTPUT_DIR = Path("build/branding")
 RESULT_FILE = Path("automation/brand-assets.json")
 CONFIG_FILE = Path("src/shared/VisualConfig.lua")
@@ -30,16 +31,44 @@ def require_env(name: str, fallback: str | None = None) -> str:
     return value
 
 
+def resolve_creator_id(username: str, explicit_id: str = "") -> int:
+    if explicit_id.strip():
+        try:
+            return int(explicit_id)
+        except ValueError as exc:
+            raise RuntimeError("ROBLOX_CREATOR_ID debe ser numérico.") from exc
+
+    response = requests.post(
+        USERS_API,
+        json={"usernames": [username], "excludeBannedUsers": True},
+        timeout=30,
+    )
+    response.raise_for_status()
+    users = response.json().get("data", [])
+    if not users:
+        raise RuntimeError(f"Roblox no encontró el usuario {username!r}.")
+    creator_id = users[0].get("id")
+    if not isinstance(creator_id, int) or creator_id <= 0:
+        raise RuntimeError(f"Respuesta de usuario inesperada: {users[0]!r}")
+    print(f"Propietario resuelto: {users[0].get('name')} ({creator_id})")
+    return creator_id
+
+
 def render_svg(source: Path, output: Path) -> None:
     if not source.is_file():
         raise FileNotFoundError(source)
     output.parent.mkdir(parents=True, exist_ok=True)
-    cairosvg.svg2png(url=str(source), write_to=str(output), output_width=1280, output_height=720)
+    cairosvg.svg2png(
+        url=str(source),
+        write_to=str(output),
+        output_width=1280,
+        output_height=720,
+    )
     if output.stat().st_size <= 0:
         raise RuntimeError(f"No se pudo renderizar {source}")
 
 
-def create_asset(api_key: str, creator_id: str, key: str, image_path: Path) -> str:
+def create_asset(api_key: str, creator_id: int, key: str, image_path: Path) -> str:
     request_data = {
         "assetType": "Decal",
         "displayName": f"Tinta Final - {key}",
@@ -117,7 +146,8 @@ def update_visual_config(ids: dict[str, str]) -> None:
 
 def main() -> None:
     api_key = require_env("ROBLOX_API_KEY")
-    creator_id = require_env("ROBLOX_CREATOR_ID", "8433192682")
+    username = require_env("ROBLOX_CREATOR_USERNAME", "demianvelo")
+    creator_id = resolve_creator_id(username, os.environ.get("ROBLOX_CREATOR_ID", ""))
     force = os.environ.get("FORCE_UPLOAD", "false").lower() == "true"
 
     if RESULT_FILE.exists() and not force:
@@ -138,7 +168,16 @@ def main() -> None:
 
     RESULT_FILE.parent.mkdir(parents=True, exist_ok=True)
     RESULT_FILE.write_text(
-        json.dumps(asset_ids, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(
+            {
+                **asset_ids,
+                "CreatorUsername": username,
+                "CreatorId": creator_id,
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+        + "\n",
         encoding="utf-8",
     )
     update_visual_config(asset_ids)
