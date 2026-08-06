@@ -17,7 +17,7 @@ jobs:
       - uses: actions/checkout@v4
       - name: Escribir comprobación
         run: |
-          printf '# GitHub Actions activo\n\n- Fecha UTC: %s\n- Commit: %s\n' "$(date -u +'%Y-%m-%d %H:%M:%S')" "$GITHUB_SHA" > ACTIONS_HEALTH.md
+          printf '# GitHub Actions activo\n\n- Fecha UTC: %s\n- Commit: %s\n- Prueba: segundo intento automático\n' "$(date -u +'%Y-%m-%d %H:%M:%S')" "$GITHUB_SHA" > ACTIONS_HEALTH.md
       - name: Guardar comprobación
         run: |
           git config user.name "github-actions[bot]"
