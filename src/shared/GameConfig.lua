@@ -5,6 +5,7 @@ Config.UniverseId = 8973271699
 Config.PlaceId = 73618099851560
 Config.ExpectedMaxPlayers = 100
 Config.DataStoreName = "TintaFinal_PlayerData_v2"
+Config.BuildRevision = "2026.08.06.1"
 
 Config.Match = {
     MinimumPlayers = 1,
