@@ -14,7 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: write
+  contents: read
+  statuses: write
 
 env:
   ROBLOX_UNIVERSE_ID: "8973271699"
@@ -31,8 +32,28 @@ jobs:
       - name: Descargar repositorio
         id: checkout
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
+
+      - name: Marcar despliegue en curso
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY' > /tmp/pending.json
+          import json
+          print(json.dumps({
+              "state": "pending",
+              "context": "tintafinal/roblox-deploy",
+              "description": "Validando y compilando TintaFinal",
+          }))
+          PY
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data-binary @/tmp/pending.json \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
 
       - name: Comprobar secreto de Roblox
         id: secret
@@ -195,9 +216,10 @@ jobs:
           path: publish-response.json
           retention-days: 30
 
-      - name: Registrar resultado del despliegue
+      - name: Publicar estado final del despliegue
         if: ${{ always() }}
         env:
+          GH_TOKEN: ${{ github.token }}
           SECRET_OUTCOME: ${{ steps.secret.outcome }}
           STRUCTURE_OUTCOME: ${{ steps.structure.outcome }}
           FILES_OUTCOME: ${{ steps.files.outcome }}
@@ -209,69 +231,37 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          python3 - <<'PY'
+          if [ "${VERIFY_OUTCOME}" = "success" ]; then
+            state="success"
+            description="TintaFinal publicada correctamente en Roblox"
+          else
+            state="failure"
+            description="Falló el despliegue; revisar el workflow"
+          fi
+
+          python3 - "$state" "$description" <<'PY' > /tmp/final-status.json
           import json
-          import os
-          from datetime import datetime, timezone
-          from pathlib import Path
-
-          steps = {
-              'secret': os.environ.get('SECRET_OUTCOME', 'unknown'),
-              'structure': os.environ.get('STRUCTURE_OUTCOME', 'unknown'),
-              'files': os.environ.get('FILES_OUTCOME', 'unknown'),
-              'security': os.environ.get('SECURITY_OUTCOME', 'unknown'),
-              'rojo': os.environ.get('ROJO_OUTCOME', 'unknown'),
-              'build': os.environ.get('BUILD_OUTCOME', 'unknown'),
-              'publish': os.environ.get('PUBLISH_OUTCOME', 'unknown'),
-              'verify': os.environ.get('VERIFY_OUTCOME', 'unknown'),
-          }
-
-          version = None
-          response_path = Path('publish-response.json')
-          if response_path.exists():
-              try:
-                  version = json.loads(response_path.read_text(encoding='utf-8')).get('versionNumber')
-              except Exception:
-                  version = None
-
-          status_name = 'published' if steps['verify'] == 'success' and isinstance(version, int) else 'failed'
-          first_failure = next(
-              (name for name, outcome in steps.items() if outcome == 'failure'),
-              None,
-          )
-          status = {
-              'status': status_name,
-              'failedStep': first_failure,
-              'steps': steps,
-              'universeId': int(os.environ['ROBLOX_UNIVERSE_ID']),
-              'placeId': int(os.environ['ROBLOX_PLACE_ID']),
-              'versionNumber': version,
-              'sourceCommit': os.environ['GITHUB_SHA'],
-              'finishedAtUtc': datetime.now(timezone.utc).isoformat(),
-          }
-          Path('deploy').mkdir(exist_ok=True)
-          Path('deploy/last-run.json').write_text(
-              json.dumps(status, indent=2, ensure_ascii=False) + '\n',
-              encoding='utf-8',
-          )
-          if status_name == 'published':
-              Path('deploy/last-publish.json').write_text(
-                  json.dumps(status, indent=2, ensure_ascii=False) + '\n',
-                  encoding='utf-8',
-              )
-          print(json.dumps(status, indent=2, ensure_ascii=False))
+          import sys
+          print(json.dumps({
+              "state": sys.argv[1],
+              "context": "tintafinal/roblox-deploy",
+              "description": sys.argv[2],
+          }))
           PY
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add deploy/last-run.json
-          if [ -f deploy/last-publish.json ]; then
-            git add deploy/last-publish.json
-          fi
-          if git diff --cached --quiet; then
-            echo "El estado del despliegue no cambió."
-            exit 0
-          fi
-          git commit -m "Registrar resultado del despliegue de Roblox"
-          git pull --rebase origin main
-          git push origin HEAD:main
+          curl --fail --silent --show-error \
+            --request POST \
+            --header "Authorization: Bearer ${GH_TOKEN}" \
+            --header "Accept: application/vnd.github+json" \
+            --header "X-GitHub-Api-Version: 2022-11-28" \
+            --data-binary @/tmp/final-status.json \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
+
+          echo "secret=${SECRET_OUTCOME}"
+          echo "structure=${STRUCTURE_OUTCOME}"
+          echo "files=${FILES_OUTCOME}"
+          echo "security=${SECURITY_OUTCOME}"
+          echo "rojo=${ROJO_OUTCOME}"
+          echo "build=${BUILD_OUTCOME}"
+          echo "publish=${PUBLISH_OUTCOME}"
+          echo "verify=${VERIFY_OUTCOME}"
