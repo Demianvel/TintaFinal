@@ -1,5 +1,6 @@
 name: Diagnose Roblox deployment
 
+# Trigger renewed after ROBLOX_API_KEY update: 2026-08-06 18:49 ART
 on:
   push:
     branches: [main]
