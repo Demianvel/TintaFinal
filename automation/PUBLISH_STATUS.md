@@ -1,16 +1,16 @@
 # Estado de publicación de Tinta Final
 
 - Estado final: ERROR
-- Fecha UTC: 2026-08-06 23:35:45
-- Commit ejecutado: 2d73823aed2d96aa83ee655aefbd62234afaee8d
+- Fecha UTC: 2026-08-06 23:37:26
+- Commit ejecutado: 21220cc715c574abd1aaa8d8be506d3a7cfc6950
 - Universe ID: 8973271699
 - Place ID: 73618099851560
 - Comprobación: success
-- Rust: cancelled
-- Instalación de Rojo: skipped
-- Sourcemap: skipped
-- Compilación RBXLX: skipped
-- Artifact RBXLX: skipped
+- Rust: success
+- Instalación de Rojo: success
+- Sourcemap: success
+- Compilación RBXLX: success
+- Artifact RBXLX: cancelled
 - Publicación Roblox: skipped
 - Verificación de versión: skipped
 - HTTP Roblox: NO_GENERADO
