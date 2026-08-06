@@ -40,7 +40,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -n "${ROBLOX_API_KEY:-}"
+          if [ -z "${ROBLOX_API_KEY:-}" ]; then
+            echo "Falta el secreto ROBLOX_API_KEY."
+            exit 1
+          fi
           test -f default.project.json
           test -d src/server
           test -d src/client
@@ -53,16 +56,18 @@ jobs:
 
       - name: Instalar Rust compatible con Rojo
         id: rust
-        uses: dtolnay/rust-toolchain@1.88.0
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88.0"
 
-      - name: Cachear compilación de Rojo
+      - name: Cachear Rojo
         uses: actions/cache@v4
         with:
           path: |
             ~/.cargo/bin/rojo
             ~/.cargo/registry
             ~/.cargo/git
-          key: ${{ runner.os }}-rojo-${{ env.ROJO_VERSION }}
+          key: ${{ runner.os }}-rojo-${{ env.ROJO_VERSION }}-rust-1.88.0
 
       - name: Instalar Rojo
         id: rojo
@@ -90,7 +95,13 @@ jobs:
           set -euo pipefail
           rojo build default.project.json --output build/TintaFinal.rbxlx
           test -s build/TintaFinal.rbxlx
-          grep -q "TintaFinal" build/TintaFinal.rbxlx
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('build/TintaFinal.rbxlx')
+          if p.stat().st_size < 1000:
+              raise SystemExit('El archivo RBXLX generado es demasiado pequeño.')
+          print(f'RBXLX generado: {p.stat().st_size} bytes')
+          PY
           ls -lh build/TintaFinal.rbxlx build/sourcemap.json
 
       - name: Guardar archivo modificable del juego
@@ -111,7 +122,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          http_code=$(curl --silent --show-error \
+          http_code=$(curl --silent --show-error --location \
             --retry 3 --retry-delay 5 --retry-all-errors \
             --output build/publish-response.json \
             --write-out '%{http_code}' \
@@ -122,7 +133,7 @@ jobs:
             --data-binary @build/TintaFinal.rbxlx)
           echo "${http_code}" > build/publish-http-code.txt
           echo "HTTP ${http_code}"
-          cat build/publish-response.json
+          cat build/publish-response.json || true
           if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
             exit 1
           fi
@@ -135,24 +146,23 @@ jobs:
           python3 - <<'PY'
           import json
           from pathlib import Path
-
-          path = Path("build/publish-response.json")
-          response = json.loads(path.read_text(encoding="utf-8"))
-          version = response.get("versionNumber")
+          response = json.loads(Path('build/publish-response.json').read_text(encoding='utf-8'))
+          version = response.get('versionNumber')
           try:
               version_number = int(version)
           except (TypeError, ValueError):
-              raise SystemExit(f"Roblox no devolvió una versión válida: {response!r}")
+              raise SystemExit(f'Roblox no devolvió una versión válida: {response!r}')
           if version_number < 1:
-              raise SystemExit(f"Número de versión inválido: {version_number}")
-          Path("build/published-version.txt").write_text(str(version_number), encoding="utf-8")
-          print(f"Tinta Final publicada correctamente. Versión Roblox: {version_number}")
+              raise SystemExit(f'Número de versión inválido: {version_number}')
+          Path('build/published-version.txt').write_text(str(version_number), encoding='utf-8')
+          print(f'Tinta Final publicada correctamente. Versión Roblox: {version_number}')
           PY
 
-      - name: Escribir estado verificable en el repositorio
+      - name: Escribir estado verificable
         if: always()
         env:
           CHECK_OUTCOME: ${{ steps.check.outcome }}
+          RUST_OUTCOME: ${{ steps.rust.outcome }}
           ROJO_OUTCOME: ${{ steps.rojo.outcome }}
           SOURCEMAP_OUTCOME: ${{ steps.sourcemap.outcome }}
           BUILD_OUTCOME: ${{ steps.build.outcome }}
@@ -168,7 +178,7 @@ jobs:
           response="Sin respuesta de Roblox."
           [ -f build/publish-http-code.txt ] && http_code=$(cat build/publish-http-code.txt)
           [ -f build/published-version.txt ] && version=$(cat build/published-version.txt)
-          [ -f build/publish-response.json ] && response=$(cat build/publish-response.json | head -c 3000)
+          [ -f build/publish-response.json ] && response=$(head -c 3000 build/publish-response.json)
 
           if [ "${VERIFY_OUTCOME}" = "success" ]; then
             final_state="PUBLICADO CORRECTAMENTE"
@@ -185,6 +195,7 @@ jobs:
           - Universe ID: ${ROBLOX_UNIVERSE_ID}
           - Place ID: ${ROBLOX_PLACE_ID}
           - Comprobación: ${CHECK_OUTCOME}
+          - Rust: ${RUST_OUTCOME}
           - Instalación de Rojo: ${ROJO_OUTCOME}
           - Sourcemap: ${SOURCEMAP_OUTCOME}
           - Compilación RBXLX: ${BUILD_OUTCOME}
