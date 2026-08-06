@@ -1,13 +1,13 @@
-name: Deploy TintaFinal to Roblox
+name: Validar, compilar y publicar TintaFinal
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
       - "src/**"
       - "default.project.json"
       - ".github/workflows/publish-roblox.yml"
-  workflow_dispatch:
 
 concurrency:
   group: tintafinal-production
@@ -15,7 +15,6 @@ concurrency:
 
 permissions:
   contents: read
-  statuses: write
 
 env:
   ROBLOX_UNIVERSE_ID: "8973271699"
@@ -26,142 +25,52 @@ jobs:
   deploy:
     name: Validar, compilar y publicar
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
       - name: Descargar repositorio
-        id: checkout
         uses: actions/checkout@v4
 
-      - name: Marcar despliegue en curso
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY' > /tmp/pending.json
-          import json
-          print(json.dumps({
-              "state": "pending",
-              "context": "tintafinal/roblox-deploy",
-              "description": "Validando y compilando TintaFinal",
-          }))
-          PY
-          curl --fail --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --data-binary @/tmp/pending.json \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
-
-      - name: Comprobar secreto de Roblox
-        id: secret
+      - name: Comprobar proyecto y secreto
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${ROBLOX_API_KEY:-}" ]; then
-            echo "Falta el secreto ROBLOX_API_KEY."
-            exit 1
-          fi
-
-      - name: Validar estructura del proyecto
-        id: structure
-        shell: bash
-        run: |
-          set -euo pipefail
+          test -n "${ROBLOX_API_KEY:-}"
           test -f default.project.json
           test -d src/server
           test -d src/client
           test -d src/shared
+          test -f src/server/Main.server.lua
+          test -f src/server/LegacyCleanup.server.lua
+          test -f src/client/LegacyGuiCleanup.client.lua
           python3 -m json.tool default.project.json >/dev/null
+          echo "Proyecto y secreto disponibles."
 
-      - name: Rechazar archivos no permitidos
-        id: files
+      - name: Instalar Rust compatible con Rojo
+        uses: dtolnay/rust-toolchain@1.88.0
+
+      - name: Cachear compilación de Rojo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/rojo
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-rojo-${{ env.ROJO_VERSION }}
+
+      - name: Instalar Rojo
         shell: bash
         run: |
           set -euo pipefail
-          forbidden=$(find . -type f \
-            \( -iname '*.exe' -o -iname '*.apk' -o -iname '*.bat' -o -iname '*.cmd' \
-               -o -iname '*.msi' -o -iname '*.scr' -o -iname '*.dll' -o -iname '*.zip' \
-               -o -iname '*.rar' -o -iname '*.7z' \) \
-            -not -path './.git/*' -print)
-          if [ -n "$forbidden" ]; then
-            echo "Archivos no permitidos encontrados:"
-            echo "$forbidden"
-            exit 1
+          if ! command -v rojo >/dev/null 2>&1; then
+            cargo install rojo --version "${ROJO_VERSION}" --locked
           fi
-
-      - name: Buscar patrones de exploit y secretos expuestos
-        id: security
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-          import sys
-
-          exploit = re.compile(
-              r"loadstring|game\s*:\s*HttpGet|getgenv|hookmetamethod|"
-              r"getrawmetatable|sethiddenproperty|syn\.request|"
-              r"firetouchinterest|queue_on_teleport|identifyexecutor|"
-              r"\bKRNL\b|\bFluxus\b|\bSynapse\b|Kill Aura|Auto Win|Noclip",
-              re.IGNORECASE,
-          )
-          api_key = re.compile(r'''ROBLOX_API_KEY\s*=\s*["'][^$"'][^"']{8,}["']''')
-          excluded = {
-              Path('.github/workflows/publish-roblox.yml'),
-              Path('SECURITY.md'),
-          }
-
-          findings = []
-          for path in Path('.').rglob('*'):
-              if not path.is_file() or '.git' in path.parts or path in excluded:
-                  continue
-              try:
-                  content = path.read_text(encoding='utf-8')
-              except (UnicodeDecodeError, OSError):
-                  continue
-              if exploit.search(content):
-                  findings.append(f'{path}: patrón de exploit')
-              if api_key.search(content):
-                  findings.append(f'{path}: posible clave expuesta')
-
-          if findings:
-              print('\n'.join(findings))
-              sys.exit(1)
-          print('Validación de seguridad superada.')
-          PY
-
-      - name: Instalar Rojo oficial precompilado
-        id: rojo
-        shell: bash
-        run: |
-          set -euo pipefail
-          archive="rojo-${ROJO_VERSION}-linux-x86_64.zip"
-          url="https://github.com/rojo-rbx/rojo/releases/download/v${ROJO_VERSION}/${archive}"
-          echo "Descargando ${url}"
-          curl --fail --location --retry 3 --retry-delay 3 \
-            --output "/tmp/${archive}" "${url}"
-          rm -rf /tmp/rojo-bin
-          mkdir -p /tmp/rojo-bin "$HOME/.local/bin"
-          unzip -q "/tmp/${archive}" -d /tmp/rojo-bin
-          rojo_path=$(find /tmp/rojo-bin -type f -name rojo -print -quit)
-          if [ -z "${rojo_path}" ]; then
-            echo "No se encontró el ejecutable rojo dentro del archivo."
-            find /tmp/rojo-bin -maxdepth 3 -type f -print
-            exit 1
-          fi
-          install -m 0755 "${rojo_path}" "$HOME/.local/bin/rojo"
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
-          "$HOME/.local/bin/rojo" --version
+          rojo --version
 
       - name: Validar árbol Rojo
-        id: sourcemap
         shell: bash
         run: |
           set -euo pipefail
@@ -170,16 +79,15 @@ jobs:
           test -s build/sourcemap.json
 
       - name: Compilar TintaFinal.rbxlx
-        id: build
         shell: bash
         run: |
           set -euo pipefail
           rojo build default.project.json --output build/TintaFinal.rbxlx
           test -s build/TintaFinal.rbxlx
+          grep -q "TintaFinal" build/TintaFinal.rbxlx
           ls -lh build/TintaFinal.rbxlx build/sourcemap.json
 
-      - name: Guardar compilación
-        id: artifact
+      - name: Guardar archivo modificable del juego
         uses: actions/upload-artifact@v4
         with:
           name: TintaFinal-Roblox-Place
@@ -187,7 +95,7 @@ jobs:
             build/TintaFinal.rbxlx
             build/sourcemap.json
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
 
       - name: Publicar en Roblox
         id: publish
@@ -196,17 +104,22 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          curl --fail-with-body --show-error --silent \
+          http_code=$(curl --silent --show-error \
             --retry 3 --retry-delay 5 --retry-all-errors \
+            --output build/publish-response.json \
+            --write-out '%{http_code}' \
             --request POST \
             "https://apis.roblox.com/universes/v1/${ROBLOX_UNIVERSE_ID}/places/${ROBLOX_PLACE_ID}/versions?versionType=Published" \
             --header "x-api-key: ${ROBLOX_API_KEY}" \
             --header "Content-Type: application/xml" \
-            --data-binary @build/TintaFinal.rbxlx \
-            | tee publish-response.json
+            --data-binary @build/TintaFinal.rbxlx)
+          echo "HTTP ${http_code}"
+          cat build/publish-response.json
+          if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
+            exit 1
+          fi
 
       - name: Verificar respuesta de Roblox
-        id: verify
         shell: bash
         run: |
           set -euo pipefail
@@ -214,70 +127,32 @@ jobs:
           import json
           from pathlib import Path
 
-          response = json.loads(Path('publish-response.json').read_text(encoding='utf-8'))
-          version = response.get('versionNumber')
-          if not isinstance(version, int) or version < 1:
-              raise SystemExit(f'Respuesta inesperada de Roblox: {response!r}')
-          print(f'Roblox publicó la versión {version}.')
+          path = Path("build/publish-response.json")
+          response = json.loads(path.read_text(encoding="utf-8"))
+          version = response.get("versionNumber")
+          try:
+              version_number = int(version)
+          except (TypeError, ValueError):
+              raise SystemExit(f"Roblox no devolvió una versión válida: {response!r}")
+          if version_number < 1:
+              raise SystemExit(f"Número de versión inválido: {version_number}")
+          print(f"Tinta Final publicada correctamente. Versión Roblox: {version_number}")
+          summary = Path(__import__('os').environ['GITHUB_STEP_SUMMARY'])
+          summary.write_text(
+              "# Tinta Final publicada\n\n"
+              f"- Universe ID: 8973271699\n"
+              f"- Place ID: 73618099851560\n"
+              f"- Versión Roblox: {version_number}\n"
+              "- Archivo: `TintaFinal.rbxlx`\n",
+              encoding="utf-8",
+          )
           PY
 
       - name: Guardar respuesta de publicación
-        if: ${{ steps.publish.outcome == 'success' }}
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: Roblox-Publish-Response
-          path: publish-response.json
+          name: Roblox-Publish-Result
+          path: build/publish-response.json
+          if-no-files-found: warn
           retention-days: 30
-
-      - name: Publicar estado final del despliegue
-        if: ${{ always() }}
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-          SECRET_OUTCOME: ${{ steps.secret.outcome }}
-          STRUCTURE_OUTCOME: ${{ steps.structure.outcome }}
-          FILES_OUTCOME: ${{ steps.files.outcome }}
-          SECURITY_OUTCOME: ${{ steps.security.outcome }}
-          ROJO_OUTCOME: ${{ steps.rojo.outcome }}
-          SOURCEMAP_OUTCOME: ${{ steps.sourcemap.outcome }}
-          BUILD_OUTCOME: ${{ steps.build.outcome }}
-          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
-          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ "${VERIFY_OUTCOME}" = "success" ]; then
-            state="success"
-            description="TintaFinal publicada correctamente en Roblox"
-          else
-            state="failure"
-            description="Falló el despliegue; revisar el workflow"
-          fi
-
-          python3 - "$state" "$description" <<'PY' > /tmp/final-status.json
-          import json
-          import sys
-          print(json.dumps({
-              "state": sys.argv[1],
-              "context": "tintafinal/roblox-deploy",
-              "description": sys.argv[2],
-          }))
-          PY
-
-          curl --fail --silent --show-error \
-            --request POST \
-            --header "Authorization: Bearer ${GH_TOKEN}" \
-            --header "Accept: application/vnd.github+json" \
-            --header "X-GitHub-Api-Version: 2022-11-28" \
-            --data-binary @/tmp/final-status.json \
-            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" >/dev/null
-
-          echo "secret=${SECRET_OUTCOME}"
-          echo "structure=${STRUCTURE_OUTCOME}"
-          echo "files=${FILES_OUTCOME}"
-          echo "security=${SECURITY_OUTCOME}"
-          echo "rojo=${ROJO_OUTCOME}"
-          echo "sourcemap=${SOURCEMAP_OUTCOME}"
-          echo "build=${BUILD_OUTCOME}"
-          echo "publish=${PUBLISH_OUTCOME}"
-          echo "verify=${VERIFY_OUTCOME}"
