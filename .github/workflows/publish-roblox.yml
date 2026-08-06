@@ -29,11 +29,13 @@ jobs:
 
     steps:
       - name: Descargar repositorio
+        id: checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
 
       - name: Comprobar secreto de Roblox
+        id: secret
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
         shell: bash
@@ -45,6 +47,7 @@ jobs:
           fi
 
       - name: Validar estructura del proyecto
+        id: structure
         shell: bash
         run: |
           set -euo pipefail
@@ -55,6 +58,7 @@ jobs:
           python3 -m json.tool default.project.json >/dev/null
 
       - name: Rechazar archivos no permitidos
+        id: files
         shell: bash
         run: |
           set -euo pipefail
@@ -70,6 +74,7 @@ jobs:
           fi
 
       - name: Buscar patrones de exploit y secretos expuestos
+        id: security
         shell: bash
         run: |
           set -euo pipefail
@@ -112,14 +117,17 @@ jobs:
           PY
 
       - name: Instalar Rust
+        id: rust
         uses: dtolnay/rust-toolchain@stable
 
       - name: Restaurar caché de Cargo
+        id: cache
         uses: Swatinem/rust-cache@v2
         with:
           cache-on-failure: true
 
       - name: Instalar Rojo
+        id: rojo
         shell: bash
         run: |
           set -euo pipefail
@@ -129,6 +137,7 @@ jobs:
           rojo --version
 
       - name: Compilar TintaFinal.rbxlx
+        id: build
         shell: bash
         run: |
           set -euo pipefail
@@ -138,6 +147,7 @@ jobs:
           ls -lh build/TintaFinal.rbxlx
 
       - name: Guardar compilación
+        id: artifact
         uses: actions/upload-artifact@v4
         with:
           name: TintaFinal-Roblox-Place
@@ -146,6 +156,7 @@ jobs:
           retention-days: 14
 
       - name: Publicar en Roblox
+        id: publish
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
         shell: bash
@@ -161,6 +172,40 @@ jobs:
             | tee publish-response.json
 
       - name: Verificar respuesta de Roblox
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          response = json.loads(Path('publish-response.json').read_text(encoding='utf-8'))
+          version = response.get('versionNumber')
+          if not isinstance(version, int) or version < 1:
+              raise SystemExit(f'Respuesta inesperada de Roblox: {response!r}')
+          print(f'Roblox publicó la versión {version}.')
+          PY
+
+      - name: Guardar respuesta de publicación
+        if: ${{ steps.publish.outcome == 'success' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: Roblox-Publish-Response
+          path: publish-response.json
+          retention-days: 30
+
+      - name: Registrar resultado del despliegue
+        if: ${{ always() }}
+        env:
+          SECRET_OUTCOME: ${{ steps.secret.outcome }}
+          STRUCTURE_OUTCOME: ${{ steps.structure.outcome }}
+          FILES_OUTCOME: ${{ steps.files.outcome }}
+          SECURITY_OUTCOME: ${{ steps.security.outcome }}
+          ROJO_OUTCOME: ${{ steps.rojo.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
         shell: bash
         run: |
           set -euo pipefail
@@ -170,45 +215,63 @@ jobs:
           from datetime import datetime, timezone
           from pathlib import Path
 
-          response = json.loads(Path('publish-response.json').read_text(encoding='utf-8'))
-          version = response.get('versionNumber')
-          if not isinstance(version, int) or version < 1:
-              raise SystemExit(f'Respuesta inesperada de Roblox: {response!r}')
+          steps = {
+              'secret': os.environ.get('SECRET_OUTCOME', 'unknown'),
+              'structure': os.environ.get('STRUCTURE_OUTCOME', 'unknown'),
+              'files': os.environ.get('FILES_OUTCOME', 'unknown'),
+              'security': os.environ.get('SECURITY_OUTCOME', 'unknown'),
+              'rojo': os.environ.get('ROJO_OUTCOME', 'unknown'),
+              'build': os.environ.get('BUILD_OUTCOME', 'unknown'),
+              'publish': os.environ.get('PUBLISH_OUTCOME', 'unknown'),
+              'verify': os.environ.get('VERIFY_OUTCOME', 'unknown'),
+          }
 
+          version = None
+          response_path = Path('publish-response.json')
+          if response_path.exists():
+              try:
+                  version = json.loads(response_path.read_text(encoding='utf-8')).get('versionNumber')
+              except Exception:
+                  version = None
+
+          status_name = 'published' if steps['verify'] == 'success' and isinstance(version, int) else 'failed'
+          first_failure = next(
+              (name for name, outcome in steps.items() if outcome == 'failure'),
+              None,
+          )
           status = {
-              'status': 'published',
+              'status': status_name,
+              'failedStep': first_failure,
+              'steps': steps,
               'universeId': int(os.environ['ROBLOX_UNIVERSE_ID']),
               'placeId': int(os.environ['ROBLOX_PLACE_ID']),
               'versionNumber': version,
               'sourceCommit': os.environ['GITHUB_SHA'],
-              'publishedAtUtc': datetime.now(timezone.utc).isoformat(),
+              'finishedAtUtc': datetime.now(timezone.utc).isoformat(),
           }
           Path('deploy').mkdir(exist_ok=True)
-          Path('deploy/last-publish.json').write_text(
+          Path('deploy/last-run.json').write_text(
               json.dumps(status, indent=2, ensure_ascii=False) + '\n',
               encoding='utf-8',
           )
+          if status_name == 'published':
+              Path('deploy/last-publish.json').write_text(
+                  json.dumps(status, indent=2, ensure_ascii=False) + '\n',
+                  encoding='utf-8',
+              )
           print(json.dumps(status, indent=2, ensure_ascii=False))
           PY
 
-      - name: Guardar respuesta de publicación
-        uses: actions/upload-artifact@v4
-        with:
-          name: Roblox-Publish-Response
-          path: publish-response.json
-          retention-days: 30
-
-      - name: Registrar última publicación en el repositorio
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add deploy/last-publish.json
+          git add deploy/last-run.json
+          if [ -f deploy/last-publish.json ]; then
+            git add deploy/last-publish.json
+          fi
           if git diff --cached --quiet; then
-            echo "El estado de publicación no cambió."
+            echo "El estado del despliegue no cambió."
             exit 0
           fi
-          git commit -m "Registrar publicación de Roblox"
+          git commit -m "Registrar resultado del despliegue de Roblox"
           git pull --rebase origin main
           git push origin HEAD:main
