@@ -4,35 +4,61 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
+    branches: [main]
+
+concurrency:
+  group: build-roblox-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   build:
+    name: Compilar TintaFinal.rbxlx
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 30
 
     steps:
-      - name: Checkout repository
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Install Rust
+      - name: Instalar Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Cargo
+      - name: Restaurar caché de Cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
 
-      - name: Install Rojo
-        run: cargo install rojo --version 7.6.1 --locked
-
-      - name: Build place file
+      - name: Instalar Rojo 7.6.1
+        shell: bash
         run: |
+          set -euo pipefail
+          if ! command -v rojo >/dev/null 2>&1; then
+            cargo install rojo --version 7.6.1 --locked
+          fi
+          rojo --version
+
+      - name: Validar archivos esenciales
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f default.project.json
+          test -d src/server
+          test -d src/client
+          test -d src/shared
+
+      - name: Compilar archivo del Place
+        shell: bash
+        run: |
+          set -euo pipefail
           mkdir -p build
           rojo build default.project.json --output build/TintaFinal.rbxlx
+          test -s build/TintaFinal.rbxlx
+          ls -lh build/TintaFinal.rbxlx
 
-      - name: Upload compiled place
+      - name: Guardar archivo compilado
         uses: actions/upload-artifact@v4
         with:
           name: TintaFinal-Roblox-Place
