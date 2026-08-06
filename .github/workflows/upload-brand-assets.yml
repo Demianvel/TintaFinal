@@ -1,0 +1,116 @@
+name: Upload Tinta Final brand assets
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_upload:
+        description: "Volver a crear los assets aunque ya existan"
+        required: false
+        type: boolean
+        default: false
+  push:
+    branches: [main]
+    paths:
+      - "assets/branding/**"
+      - "scripts/upload_brand_assets.py"
+      - ".github/workflows/upload-brand-assets.yml"
+
+concurrency:
+  group: tintafinal-brand-assets
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  ROBLOX_CREATOR_ID: "8433192682"
+
+jobs:
+  upload:
+    name: Renderizar, subir y conectar imágenes
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar renderizador y cliente HTTP
+        run: |
+          python -m pip install --disable-pip-version-check \
+            cairosvg==2.7.1 requests==2.32.4
+
+      - name: Comprobar secreto de Roblox
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          if [ -z "${ROBLOX_API_KEY:-}" ]; then
+            echo "Falta ROBLOX_API_KEY en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Subir imágenes oficiales
+        id: assets
+        continue-on-error: true
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          FORCE_UPLOAD: ${{ inputs.force_upload || 'false' }}
+        shell: bash
+        run: |
+          set +e
+          mkdir -p automation build/branding
+          python scripts/upload_brand_assets.py 2>&1 | tee automation/asset-upload.log
+          code=${PIPESTATUS[0]}
+          echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 0 ]; then
+            printf '# Carga de imágenes de Tinta Final\n\n- Estado: CORRECTO\n- Commit: %s\n- Fecha UTC: %s\n' "$GITHUB_SHA" "$(date -u +'%Y-%m-%d %H:%M:%S')" > automation/ASSET_UPLOAD_STATUS.md
+          else
+            printf '# Carga de imágenes de Tinta Final\n\n- Estado: ERROR\n- Commit: %s\n- Fecha UTC: %s\n\n```text\n' "$GITHUB_SHA" "$(date -u +'%Y-%m-%d %H:%M:%S')" > automation/ASSET_UPLOAD_STATUS.md
+            tail -n 80 automation/asset-upload.log >> automation/ASSET_UPLOAD_STATUS.md
+            printf '\n```\n' >> automation/ASSET_UPLOAD_STATUS.md
+          fi
+          exit 0
+
+      - name: Guardar IDs y diagnóstico en main
+        if: always()
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/shared/VisualConfig.lua automation/ build/branding/ || true
+          if git diff --cached --quiet; then
+            echo "No hay archivos nuevos para guardar."
+          else
+            git commit -m "Conectar imágenes oficiales de Tinta Final"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Confirmar carga de assets
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.assets.outputs.exit_code }}" != "0" ]; then
+            echo "La carga de imágenes falló. Revisar automation/ASSET_UPLOAD_STATUS.md."
+            exit 1
+          fi
+          test -s automation/brand-assets.json
+          grep -q 'MainMenu = 0' src/shared/VisualConfig.lua && exit 1 || true
+          grep -q 'Loading = 0' src/shared/VisualConfig.lua && exit 1 || true
+          echo "Imágenes conectadas correctamente."
+
+      - name: Guardar PNG renderizados
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TintaFinal-Brand-PNG
+          path: build/branding/*.png
+          if-no-files-found: warn
+          retention-days: 30
