@@ -17,13 +17,13 @@ on:
 
 concurrency:
   group: tintafinal-brand-assets
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write
 
 env:
-  ROBLOX_CREATOR_ID: "8433192682"
+  ROBLOX_CREATOR_USERNAME: "demianvelo"
 
 jobs:
   upload:
@@ -61,7 +61,7 @@ jobs:
         continue-on-error: true
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
-          FORCE_UPLOAD: ${{ inputs.force_upload || 'false' }}
+          FORCE_UPLOAD: ${{ github.event_name == 'workflow_dispatch' && inputs.force_upload || false }}
         shell: bash
         run: |
           set +e
@@ -73,7 +73,7 @@ jobs:
             printf '# Carga de imágenes de Tinta Final\n\n- Estado: CORRECTO\n- Commit: %s\n- Fecha UTC: %s\n' "$GITHUB_SHA" "$(date -u +'%Y-%m-%d %H:%M:%S')" > automation/ASSET_UPLOAD_STATUS.md
           else
             printf '# Carga de imágenes de Tinta Final\n\n- Estado: ERROR\n- Commit: %s\n- Fecha UTC: %s\n\n```text\n' "$GITHUB_SHA" "$(date -u +'%Y-%m-%d %H:%M:%S')" > automation/ASSET_UPLOAD_STATUS.md
-            tail -n 80 automation/asset-upload.log >> automation/ASSET_UPLOAD_STATUS.md
+            tail -n 100 automation/asset-upload.log >> automation/ASSET_UPLOAD_STATUS.md
             printf '\n```\n' >> automation/ASSET_UPLOAD_STATUS.md
           fi
           exit 0
@@ -82,6 +82,7 @@ jobs:
         if: always()
         shell: bash
         run: |
+          set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add src/shared/VisualConfig.lua automation/ build/branding/ || true
@@ -102,8 +103,14 @@ jobs:
             exit 1
           fi
           test -s automation/brand-assets.json
-          grep -q 'MainMenu = 0' src/shared/VisualConfig.lua && exit 1 || true
-          grep -q 'Loading = 0' src/shared/VisualConfig.lua && exit 1 || true
+          if grep -q 'MainMenu = 0' src/shared/VisualConfig.lua; then
+            echo "MainMenu todavía está en 0."
+            exit 1
+          fi
+          if grep -q 'Loading = 0' src/shared/VisualConfig.lua; then
+            echo "Loading todavía está en 0."
+            exit 1
+          fi
           echo "Imágenes conectadas correctamente."
 
       - name: Guardar PNG renderizados
