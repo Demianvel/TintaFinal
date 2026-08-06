@@ -1,0 +1,68 @@
+name: Publish Roblox
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_place_id:
+        description: "Escribí 73618099851560 para confirmar la publicación"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  ROBLOX_UNIVERSE_ID: "8973271699"
+  ROBLOX_PLACE_ID: "73618099851560"
+
+jobs:
+  publish:
+    if: ${{ inputs.confirm_place_id == '73618099851560' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Check API key
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          if [ -z "$ROBLOX_API_KEY" ]; then
+            echo "Falta el secreto ROBLOX_API_KEY en Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo
+        uses: Swatinem/rust-cache@v2
+
+      - name: Install Rojo
+        run: cargo install rojo --version 7.6.1 --locked
+
+      - name: Build place file
+        run: |
+          mkdir -p build
+          rojo build default.project.json --output build/TintaFinal.rbxlx
+
+      - name: Publish to Roblox
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          curl --fail-with-body --show-error --silent \
+            --request POST \
+            "https://apis.roblox.com/universes/v1/${ROBLOX_UNIVERSE_ID}/places/${ROBLOX_PLACE_ID}/versions?versionType=Published" \
+            --header "x-api-key: ${ROBLOX_API_KEY}" \
+            --header "Content-Type: application/xml" \
+            --data-binary @build/TintaFinal.rbxlx \
+            | tee publish-response.json
+
+      - name: Save publish response
+        uses: actions/upload-artifact@v4
+        with:
+          name: Roblox-Publish-Response
+          path: publish-response.json
+          retention-days: 30
