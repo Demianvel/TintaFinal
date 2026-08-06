@@ -2,9 +2,10 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.GameConfig)
-local ProfileService = require(script.Services.ProfileService)
-local EconomyService = require(script.Services.EconomyService)
-local GameService = require(script.Services.GameService)
+local Services = script.Parent:WaitForChild("Services")
+local ProfileService = require(Services:WaitForChild("ProfileService"))
+local EconomyService = require(Services:WaitForChild("EconomyService"))
+local GameService = require(Services:WaitForChild("GameService"))
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes") or Instance.new("Folder")
 remotes.Name = "Remotes"
