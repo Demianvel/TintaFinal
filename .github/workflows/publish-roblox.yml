@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   ROBLOX_UNIVERSE_ID: "8973271699"
@@ -30,8 +30,11 @@ jobs:
     steps:
       - name: Descargar repositorio
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Comprobar proyecto y secreto
+        id: check
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
         shell: bash
@@ -49,6 +52,7 @@ jobs:
           echo "Proyecto y secreto disponibles."
 
       - name: Instalar Rust compatible con Rojo
+        id: rust
         uses: dtolnay/rust-toolchain@1.88.0
 
       - name: Cachear compilación de Rojo
@@ -58,10 +62,10 @@ jobs:
             ~/.cargo/bin/rojo
             ~/.cargo/registry
             ~/.cargo/git
-            target
           key: ${{ runner.os }}-rojo-${{ env.ROJO_VERSION }}
 
       - name: Instalar Rojo
+        id: rojo
         shell: bash
         run: |
           set -euo pipefail
@@ -71,6 +75,7 @@ jobs:
           rojo --version
 
       - name: Validar árbol Rojo
+        id: sourcemap
         shell: bash
         run: |
           set -euo pipefail
@@ -79,6 +84,7 @@ jobs:
           test -s build/sourcemap.json
 
       - name: Compilar TintaFinal.rbxlx
+        id: build
         shell: bash
         run: |
           set -euo pipefail
@@ -88,6 +94,7 @@ jobs:
           ls -lh build/TintaFinal.rbxlx build/sourcemap.json
 
       - name: Guardar archivo modificable del juego
+        id: artifact
         uses: actions/upload-artifact@v4
         with:
           name: TintaFinal-Roblox-Place
@@ -113,6 +120,7 @@ jobs:
             --header "x-api-key: ${ROBLOX_API_KEY}" \
             --header "Content-Type: application/xml" \
             --data-binary @build/TintaFinal.rbxlx)
+          echo "${http_code}" > build/publish-http-code.txt
           echo "HTTP ${http_code}"
           cat build/publish-response.json
           if [ "${http_code}" -lt 200 ] || [ "${http_code}" -ge 300 ]; then
@@ -120,6 +128,7 @@ jobs:
           fi
 
       - name: Verificar respuesta de Roblox
+        id: verify
         shell: bash
         run: |
           set -euo pipefail
@@ -136,23 +145,79 @@ jobs:
               raise SystemExit(f"Roblox no devolvió una versión válida: {response!r}")
           if version_number < 1:
               raise SystemExit(f"Número de versión inválido: {version_number}")
+          Path("build/published-version.txt").write_text(str(version_number), encoding="utf-8")
           print(f"Tinta Final publicada correctamente. Versión Roblox: {version_number}")
-          summary = Path(__import__('os').environ['GITHUB_STEP_SUMMARY'])
-          summary.write_text(
-              "# Tinta Final publicada\n\n"
-              f"- Universe ID: 8973271699\n"
-              f"- Place ID: 73618099851560\n"
-              f"- Versión Roblox: {version_number}\n"
-              "- Archivo: `TintaFinal.rbxlx`\n",
-              encoding="utf-8",
-          )
           PY
+
+      - name: Escribir estado verificable en el repositorio
+        if: always()
+        env:
+          CHECK_OUTCOME: ${{ steps.check.outcome }}
+          ROJO_OUTCOME: ${{ steps.rojo.outcome }}
+          SOURCEMAP_OUTCOME: ${{ steps.sourcemap.outcome }}
+          BUILD_OUTCOME: ${{ steps.build.outcome }}
+          ARTIFACT_OUTCOME: ${{ steps.artifact.outcome }}
+          PUBLISH_OUTCOME: ${{ steps.publish.outcome }}
+          VERIFY_OUTCOME: ${{ steps.verify.outcome }}
+        shell: bash
+        run: |
+          set +e
+          mkdir -p automation
+          http_code="NO_GENERADO"
+          version="NO_GENERADA"
+          response="Sin respuesta de Roblox."
+          [ -f build/publish-http-code.txt ] && http_code=$(cat build/publish-http-code.txt)
+          [ -f build/published-version.txt ] && version=$(cat build/published-version.txt)
+          [ -f build/publish-response.json ] && response=$(cat build/publish-response.json | head -c 3000)
+
+          if [ "${VERIFY_OUTCOME}" = "success" ]; then
+            final_state="PUBLICADO CORRECTAMENTE"
+          else
+            final_state="ERROR"
+          fi
+
+          cat > automation/PUBLISH_STATUS.md <<EOF
+          # Estado de publicación de Tinta Final
+
+          - Estado final: ${final_state}
+          - Fecha UTC: $(date -u +'%Y-%m-%d %H:%M:%S')
+          - Commit ejecutado: ${GITHUB_SHA}
+          - Universe ID: ${ROBLOX_UNIVERSE_ID}
+          - Place ID: ${ROBLOX_PLACE_ID}
+          - Comprobación: ${CHECK_OUTCOME}
+          - Instalación de Rojo: ${ROJO_OUTCOME}
+          - Sourcemap: ${SOURCEMAP_OUTCOME}
+          - Compilación RBXLX: ${BUILD_OUTCOME}
+          - Artifact RBXLX: ${ARTIFACT_OUTCOME}
+          - Publicación Roblox: ${PUBLISH_OUTCOME}
+          - Verificación de versión: ${VERIFY_OUTCOME}
+          - HTTP Roblox: ${http_code}
+          - Versión publicada: ${version}
+
+          ## Respuesta de Roblox
+
+          \`\`\`json
+          ${response}
+          \`\`\`
+          EOF
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add automation/PUBLISH_STATUS.md
+          if ! git diff --cached --quiet; then
+            git commit -m "Actualizar estado de publicación de Tinta Final"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
 
       - name: Guardar respuesta de publicación
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Roblox-Publish-Result
-          path: build/publish-response.json
+          path: |
+            build/publish-response.json
+            build/publish-http-code.txt
+            build/published-version.txt
           if-no-files-found: warn
           retention-days: 30
