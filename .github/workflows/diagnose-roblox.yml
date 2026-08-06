@@ -1,0 +1,115 @@
+name: Diagnose Roblox deployment
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/diagnose-roblox.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Comprobar proyecto y credenciales
+        id: check
+        continue-on-error: true
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        shell: bash
+        run: |
+          set +e
+          mkdir -p build
+          {
+            echo "# Diagnóstico de despliegue de Tinta Final"
+            echo
+            echo "- Fecha UTC: $(date -u +'%Y-%m-%d %H:%M:%S')"
+            echo "- Commit: ${GITHUB_SHA}"
+            if [ -n "${ROBLOX_API_KEY:-}" ]; then
+              echo "- Secreto ROBLOX_API_KEY: CONFIGURADO"
+            else
+              echo "- Secreto ROBLOX_API_KEY: FALTANTE"
+            fi
+            test -f default.project.json && echo "- default.project.json: OK" || echo "- default.project.json: FALTA"
+            test -d src/server && echo "- src/server: OK" || echo "- src/server: FALTA"
+            test -d src/client && echo "- src/client: OK" || echo "- src/client: FALTA"
+            test -f src/server/LegacyCleanup.server.lua && echo "- Limpieza de Eternal: PRESENTE" || echo "- Limpieza de Eternal: FALTA"
+            test -f src/client/LegacyGuiCleanup.client.lua && echo "- Limpieza de interfaz antigua: PRESENTE" || echo "- Limpieza de interfaz antigua: FALTA"
+            test -f assets/branding/01_pantalla_principal.jpg && echo "- Imagen principal: PRESENTE" || echo "- Imagen principal: FALTANTE"
+            test -f assets/branding/02_pantalla_carga.jpg && echo "- Imagen de carga: PRESENTE" || echo "- Imagen de carga: FALTANTE"
+          } > DEPLOY_DIAGNOSTICS.md
+
+      - name: Probar compilación con Rojo
+        id: build
+        continue-on-error: true
+        shell: bash
+        run: |
+          set +e
+          cargo install rojo --version 7.6.1 --locked >/tmp/rojo-install.log 2>&1
+          install_code=$?
+          if [ $install_code -ne 0 ]; then
+            echo "- Instalación de Rojo: ERROR" >> DEPLOY_DIAGNOSTICS.md
+            tail -n 20 /tmp/rojo-install.log >> DEPLOY_DIAGNOSTICS.md
+            exit 0
+          fi
+          mkdir -p build
+          rojo build default.project.json --output build/TintaFinal.rbxlx >/tmp/rojo-build.log 2>&1
+          build_code=$?
+          if [ $build_code -eq 0 ] && [ -s build/TintaFinal.rbxlx ]; then
+            echo "- Compilación RBXLX: OK" >> DEPLOY_DIAGNOSTICS.md
+            ls -lh build/TintaFinal.rbxlx >> DEPLOY_DIAGNOSTICS.md
+          else
+            echo "- Compilación RBXLX: ERROR" >> DEPLOY_DIAGNOSTICS.md
+            cat /tmp/rojo-build.log >> DEPLOY_DIAGNOSTICS.md
+          fi
+
+      - name: Probar publicación sin exponer la clave
+        id: publish
+        continue-on-error: true
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: "8973271699"
+          PLACE_ID: "73618099851560"
+        shell: bash
+        run: |
+          set +e
+          if [ -z "${ROBLOX_API_KEY:-}" ] || [ ! -s build/TintaFinal.rbxlx ]; then
+            echo "- Publicación Roblox: NO EJECUTADA" >> DEPLOY_DIAGNOSTICS.md
+            exit 0
+          fi
+          http_code=$(curl -sS -o /tmp/roblox-response.json -w '%{http_code}' \
+            --request POST \
+            "https://apis.roblox.com/universes/v1/${UNIVERSE_ID}/places/${PLACE_ID}/versions?versionType=Published" \
+            --header "x-api-key: ${ROBLOX_API_KEY}" \
+            --header "Content-Type: application/xml" \
+            --data-binary @build/TintaFinal.rbxlx)
+          echo "- Publicación Roblox HTTP: ${http_code}" >> DEPLOY_DIAGNOSTICS.md
+          python3 - <<'PY' >> DEPLOY_DIAGNOSTICS.md
+          import json
+          from pathlib import Path
+          p=Path('/tmp/roblox-response.json')
+          if p.exists():
+              raw=p.read_text(errors='replace')[:2000]
+              try:
+                  data=json.loads(raw)
+                  for key in ('versionNumber','code','message','error','errors'):
+                      if key in data:
+                          print(f'- Respuesta {key}: {data[key]}')
+              except Exception:
+                  print('- Respuesta no JSON: ' + raw[:500])
+          PY
+
+      - name: Guardar diagnóstico
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add DEPLOY_DIAGNOSTICS.md
+          git commit -m "Actualizar diagnóstico de despliegue" || exit 0
+          git push
