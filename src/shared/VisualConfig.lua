@@ -1,5 +1,6 @@
 -- Tinta Final visual identity.
 -- Asset IDs are populated by .github/workflows/upload-brand-assets.yml.
+-- Deployment trigger: 2026-08-06 second verified attempt.
 local VisualConfig = {
     Palette = {
         Background = Color3.fromRGB(7, 7, 15),
