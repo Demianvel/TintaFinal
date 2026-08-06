@@ -1,58 +1,158 @@
-name: Publish Roblox
+name: Deploy TintaFinal to Roblox
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "default.project.json"
+      - ".github/workflows/publish-roblox.yml"
   workflow_dispatch:
-    inputs:
-      confirm_place_id:
-        description: "Escribí 73618099851560 para confirmar la publicación"
-        required: true
-        type: string
+
+concurrency:
+  group: tintafinal-production
+  cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write
 
 env:
   ROBLOX_UNIVERSE_ID: "8973271699"
   ROBLOX_PLACE_ID: "73618099851560"
+  ROJO_VERSION: "7.6.1"
 
 jobs:
-  publish:
-    if: ${{ inputs.confirm_place_id == '73618099851560' }}
+  deploy:
+    name: Validar, compilar y publicar
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 35
 
     steps:
-      - name: Checkout repository
+      - name: Descargar repositorio
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Check API key
+      - name: Comprobar secreto de Roblox
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        shell: bash
         run: |
-          if [ -z "$ROBLOX_API_KEY" ]; then
-            echo "Falta el secreto ROBLOX_API_KEY en Settings > Secrets and variables > Actions."
+          set -euo pipefail
+          if [ -z "${ROBLOX_API_KEY:-}" ]; then
+            echo "Falta el secreto ROBLOX_API_KEY."
             exit 1
           fi
 
-      - name: Install Rust
+      - name: Validar estructura del proyecto
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f default.project.json
+          test -d src/server
+          test -d src/client
+          test -d src/shared
+          python3 -m json.tool default.project.json >/dev/null
+
+      - name: Rechazar archivos no permitidos
+        shell: bash
+        run: |
+          set -euo pipefail
+          forbidden=$(find . -type f \
+            \( -iname '*.exe' -o -iname '*.apk' -o -iname '*.bat' -o -iname '*.cmd' \
+               -o -iname '*.msi' -o -iname '*.scr' -o -iname '*.dll' -o -iname '*.zip' \
+               -o -iname '*.rar' -o -iname '*.7z' \) \
+            -not -path './.git/*' -print)
+          if [ -n "$forbidden" ]; then
+            echo "Archivos no permitidos encontrados:"
+            echo "$forbidden"
+            exit 1
+          fi
+
+      - name: Buscar patrones de exploit y secretos expuestos
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          exploit = re.compile(
+              r"loadstring|game\s*:\s*HttpGet|getgenv|hookmetamethod|"
+              r"getrawmetatable|sethiddenproperty|syn\.request|"
+              r"firetouchinterest|queue_on_teleport|identifyexecutor|"
+              r"\bKRNL\b|\bFluxus\b|\bSynapse\b|Kill Aura|Auto Win|Noclip",
+              re.IGNORECASE,
+          )
+          api_key = re.compile(r'''ROBLOX_API_KEY\s*=\s*["'][^$"'][^"']{8,}["']''')
+          excluded = {
+              Path('.github/workflows/security-scan.yml'),
+              Path('.github/workflows/publish-roblox.yml'),
+              Path('SECURITY.md'),
+          }
+
+          findings = []
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or '.git' in path.parts or path in excluded:
+                  continue
+              try:
+                  content = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              if exploit.search(content):
+                  findings.append(f'{path}: patrón de exploit')
+              if api_key.search(content):
+                  findings.append(f'{path}: posible clave expuesta')
+
+          if findings:
+              print('\n'.join(findings))
+              sys.exit(1)
+          print('Validación de seguridad superada.')
+          PY
+
+      - name: Instalar Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Cargo
+      - name: Restaurar caché de Cargo
         uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
 
-      - name: Install Rojo
-        run: cargo install rojo --version 7.6.1 --locked
-
-      - name: Build place file
+      - name: Instalar Rojo
+        shell: bash
         run: |
+          set -euo pipefail
+          if ! command -v rojo >/dev/null 2>&1; then
+            cargo install rojo --version "${ROJO_VERSION}" --locked
+          fi
+          rojo --version
+
+      - name: Compilar TintaFinal.rbxlx
+        shell: bash
+        run: |
+          set -euo pipefail
           mkdir -p build
           rojo build default.project.json --output build/TintaFinal.rbxlx
+          test -s build/TintaFinal.rbxlx
+          ls -lh build/TintaFinal.rbxlx
 
-      - name: Publish to Roblox
+      - name: Guardar compilación
+        uses: actions/upload-artifact@v4
+        with:
+          name: TintaFinal-Roblox-Place
+          path: build/TintaFinal.rbxlx
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publicar en Roblox
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        shell: bash
         run: |
+          set -euo pipefail
           curl --fail-with-body --show-error --silent \
+            --retry 3 --retry-delay 5 --retry-all-errors \
             --request POST \
             "https://apis.roblox.com/universes/v1/${ROBLOX_UNIVERSE_ID}/places/${ROBLOX_PLACE_ID}/versions?versionType=Published" \
             --header "x-api-key: ${ROBLOX_API_KEY}" \
@@ -60,9 +160,55 @@ jobs:
             --data-binary @build/TintaFinal.rbxlx \
             | tee publish-response.json
 
-      - name: Save publish response
+      - name: Verificar respuesta de Roblox
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json
+          import os
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          response = json.loads(Path('publish-response.json').read_text(encoding='utf-8'))
+          version = response.get('versionNumber')
+          if not isinstance(version, int) or version < 1:
+              raise SystemExit(f'Respuesta inesperada de Roblox: {response!r}')
+
+          status = {
+              'status': 'published',
+              'universeId': int(os.environ['ROBLOX_UNIVERSE_ID']),
+              'placeId': int(os.environ['ROBLOX_PLACE_ID']),
+              'versionNumber': version,
+              'sourceCommit': os.environ['GITHUB_SHA'],
+              'publishedAtUtc': datetime.now(timezone.utc).isoformat(),
+          }
+          Path('deploy').mkdir(exist_ok=True)
+          Path('deploy/last-publish.json').write_text(
+              json.dumps(status, indent=2, ensure_ascii=False) + '\n',
+              encoding='utf-8',
+          )
+          print(json.dumps(status, indent=2, ensure_ascii=False))
+          PY
+
+      - name: Guardar respuesta de publicación
         uses: actions/upload-artifact@v4
         with:
           name: Roblox-Publish-Response
           path: publish-response.json
           retention-days: 30
+
+      - name: Registrar última publicación en el repositorio
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add deploy/last-publish.json
+          if git diff --cached --quiet; then
+            echo "El estado de publicación no cambió."
+            exit 0
+          fi
+          git commit -m "Registrar publicación de Roblox"
+          git pull --rebase origin main
+          git push origin HEAD:main
