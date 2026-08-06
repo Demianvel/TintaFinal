@@ -5,7 +5,7 @@ local RunService = game:GetService("RunService")
 local Workspace = game:GetService("Workspace")
 
 local EXPECTED_MAX_PLAYERS = 100
-local BUILD = "2026.08.06-professional.1"
+local BUILD = "2026.08.06-professional.2"
 local startedAt = os.time()
 
 local deadline = os.clock() + 20
@@ -13,12 +13,18 @@ while not Workspace:GetAttribute("LegacyEternalContentRemoved") and os.clock() <
     task.wait(0.1)
 end
 
-Workspace.StreamingEnabled = true
-pcall(function()
+local streamingConfigured, streamingError = pcall(function()
+    Workspace.StreamingEnabled = true
     Workspace.StreamingMinRadius = 64
     Workspace.StreamingTargetRadius = 256
 end)
-Workspace.FallenPartsDestroyHeight = -220
+if not streamingConfigured then
+    warn("[TintaFinal] Roblox administra el streaming desde Creator Dashboard: " .. tostring(streamingError))
+end
+
+pcall(function()
+    Workspace.FallenPartsDestroyHeight = -220
+end)
 Players.RespawnTime = 3
 
 local function updatePopulation()
@@ -33,6 +39,7 @@ Workspace:SetAttribute("TintaFinalUniverseId", game.GameId)
 Workspace:SetAttribute("TintaFinalPlaceId", game.PlaceId)
 Workspace:SetAttribute("TintaFinalJobId", game.JobId)
 Workspace:SetAttribute("TintaFinalServerReady", true)
+Workspace:SetAttribute("TintaFinalStreamingConfigured", streamingConfigured)
 updatePopulation()
 
 Players.PlayerAdded:Connect(updatePopulation)
