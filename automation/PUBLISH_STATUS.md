@@ -1,22 +1,23 @@
 # Estado de publicación de Tinta Final
 
-- Estado final: PUBLICADO CORRECTAMENTE
-- Fecha UTC: 2026-08-06 22:54:20
-- Commit ejecutado: bc1869914d3f3465358482e88375bd8be5a87a0d
+- Estado final: ERROR
+- Fecha UTC: 2026-08-06 23:35:45
+- Commit ejecutado: 2d73823aed2d96aa83ee655aefbd62234afaee8d
 - Universe ID: 8973271699
 - Place ID: 73618099851560
 - Comprobación: success
-- Instalación de Rojo: success
-- Sourcemap: success
-- Compilación RBXLX: success
-- Artifact RBXLX: success
-- Publicación Roblox: success
-- Verificación de versión: success
-- HTTP Roblox: 200
-- Versión publicada: 82
+- Rust: cancelled
+- Instalación de Rojo: skipped
+- Sourcemap: skipped
+- Compilación RBXLX: skipped
+- Artifact RBXLX: skipped
+- Publicación Roblox: skipped
+- Verificación de versión: skipped
+- HTTP Roblox: NO_GENERADO
+- Versión publicada: NO_GENERADA
 
 ## Respuesta de Roblox
 
 ```json
-{"versionNumber":82}
+Sin respuesta de Roblox.
 ```
