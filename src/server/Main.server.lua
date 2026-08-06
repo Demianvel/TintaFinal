@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MarketplaceService = game:GetService("MarketplaceService")
 
 local Config = require(ReplicatedStorage.Shared.GameConfig)
 local Services = script.Parent:WaitForChild("Services")
@@ -81,6 +82,21 @@ local function pushProfile(player)
     local profile = ProfileService.Public(player)
     if profile then
         remotes.ProfileState:FireClient(player, profile)
+    end
+end
+
+local function syncPremiumOwnership(player)
+    local passId = Config.BattlePass.PremiumGamePassId
+    local profile = ProfileService.Get(player)
+    if not profile or not passId or passId <= 0 then
+        return
+    end
+
+    local success, ownsPass = pcall(function()
+        return MarketplaceService:UserOwnsGamePassAsync(player.UserId, passId)
+    end)
+    if success and ownsPass then
+        profile.PremiumPass = true
     end
 end
 
@@ -172,6 +188,7 @@ local function setupPlayer(player)
     end
 
     ProfileService.Load(player)
+    syncPremiumOwnership(player)
     player:SetAttribute("AliveInMatch", false)
     player:SetAttribute("MatchRole", "Lobby")
     player:SetAttribute("AFKMode", false)
@@ -185,6 +202,17 @@ local function setupPlayer(player)
     end
     pushProfile(player)
 end
+
+MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
+    if not wasPurchased or gamePassId ~= Config.BattlePass.PremiumGamePassId then
+        return
+    end
+    local profile = ProfileService.Get(player)
+    if profile then
+        profile.PremiumPass = true
+        pushProfile(player)
+    end
+end)
 
 GameService.Initialize(remotes)
 
