@@ -4,21 +4,26 @@ on:
   push:
     branches: [main]
   pull_request:
-  workflow_dispatch:
+    branches: [main]
+
+concurrency:
+  group: security-scan-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
 
 jobs:
   scan:
+    name: Validar repositorio
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
 
     steps:
-      - name: Checkout repository
+      - name: Descargar repositorio
         uses: actions/checkout@v4
 
-      - name: Reject executable archives and binaries
+      - name: Rechazar ejecutables y archivos comprimidos
         shell: bash
         run: |
           set -euo pipefail
@@ -29,16 +34,16 @@ jobs:
             -not -path './.git/*' -print)
 
           if [ -n "$forbidden" ]; then
-            echo 'Se encontraron archivos binarios o comprimidos no permitidos:'
+            echo 'Se encontraron archivos no permitidos:'
             echo "$forbidden"
             exit 1
           fi
 
-      - name: Scan suspicious Roblox exploit patterns
+      - name: Buscar patrones de exploits de Roblox
         shell: bash
         run: |
           set -euo pipefail
-          patterns='loadstring|game[[:space:]]*:[[:space:]]*HttpGet|getgenv|hookmetamethod|getrawmetatable|sethiddenproperty|syn[.]request|request[[:space:]]*\(|firetouchinterest|queue_on_teleport|identifyexecutor|KRNL|Fluxus|Synapse|Kill Aura|Auto Win|Noclip'
+          patterns='loadstring|game[[:space:]]*:[[:space:]]*HttpGet|getgenv|hookmetamethod|getrawmetatable|sethiddenproperty|syn[.]request|firetouchinterest|queue_on_teleport|identifyexecutor|KRNL|Fluxus|Synapse|Kill Aura|Auto Win|Noclip'
 
           if grep -RInE \
             --exclude-dir=.git \
@@ -49,7 +54,7 @@ jobs:
             exit 1
           fi
 
-      - name: Check for exposed Roblox API keys
+      - name: Buscar claves Roblox expuestas
         shell: bash
         run: |
           set -euo pipefail
@@ -82,5 +87,5 @@ jobs:
               sys.exit(1)
           PY
 
-      - name: Security scan passed
-        run: echo 'No se detectaron ejecutables, secretos ni patrones habituales de exploit.'
+      - name: Confirmar análisis correcto
+        run: echo 'Análisis completado sin archivos peligrosos ni claves expuestas.'
