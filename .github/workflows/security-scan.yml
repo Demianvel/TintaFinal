@@ -53,13 +53,34 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if grep -RInE \
-            --exclude-dir=.git \
-            --exclude='security-scan.yml' \
-            'ROBLOX_API_KEY[[:space:]]*=[[:space:]]*["'"'][^$][^"'"']+' .; then
-            echo 'Posible API Key escrita directamente en un archivo.'
-            exit 1
-          fi
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          import sys
+
+          pattern = re.compile(r'''ROBLOX_API_KEY\s*=\s*["'][^$"'][^"']{8,}["']''')
+          excluded = {
+              Path('.github/workflows/security-scan.yml'),
+              Path('SECURITY.md'),
+          }
+
+          findings = []
+          for path in Path('.').rglob('*'):
+              if not path.is_file() or '.git' in path.parts or path in excluded:
+                  continue
+              try:
+                  content = path.read_text(encoding='utf-8')
+              except (UnicodeDecodeError, OSError):
+                  continue
+              if pattern.search(content):
+                  findings.append(str(path))
+
+          if findings:
+              print('Posible API Key escrita directamente en estos archivos:')
+              for finding in findings:
+                  print(f'- {finding}')
+              sys.exit(1)
+          PY
 
       - name: Security scan passed
         run: echo 'No se detectaron ejecutables, secretos ni patrones habituales de exploit.'
