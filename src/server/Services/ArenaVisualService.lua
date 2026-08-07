@@ -63,6 +63,10 @@ function ArenaVisualService.Decorate(arenaData, mode)
     local root = workspace:FindFirstChild("TintaFinalWorld")
     local arenaFolder = root and root:FindFirstChild("Arena")
     if not arenaFolder or not arenaData then return end
+
+    local previous = arenaFolder:FindFirstChild("CompetitiveInkDecoration")
+    if previous then previous:Destroy() end
+
     local decoration = Instance.new("Folder")
     decoration.Name = "CompetitiveInkDecoration"
     decoration.Parent = arenaFolder
