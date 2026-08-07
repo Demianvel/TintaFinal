@@ -2,4 +2,6 @@
 
 - Estado: CORRECTO
 - Universe ID: 8973271699
-- Miniaturas procesadas: 5
+- Miniaturas activas/reutilizadas: 5
+- Duplicados eliminados en esta ejecución: 5
+- Modo: REUTILIZADO_SIN_DUPLICAR

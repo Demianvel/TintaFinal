@@ -1,44 +1,6 @@
-Miniaturas verificadas: 0/5
-Miniaturas verificadas: 5/5
-{
-  "universeId": 8973271699,
-  "upload": {
-    "fileToOperationIdDict": {
-      "TintaFinal-Main.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6ImE5ZTMxZjJjLTk0YmMtNDdmOS05M2RjLTE4NjM0MWI4ODY1OCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.Q9_qkhittvZ_CCzWoDgR7SfaKbq-ndCzOCHTTxHX4t4",
-      "TintaFinal-Lobby.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6Ijk3OTI5NTdjLTg4OWMtNDJmZi1hMTAzLTU1MzdkNGE1MzE4NiIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.imlO6du9XPRzKk8MAWqCA5McpJnaWzF8RyQwg8LxFM4",
-      "TintaFinal-Round1.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6ImQxZmFkZjliLTVhODEtNDcwOS1hZGZiLWVmMmNmNTBjZTkyZCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.DK3ydAh7ViZPCSZHYd0AIDvvHYBVxXWz_aY2nsXB7z4",
-      "TintaFinal-Round2.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjVhNjgwZTUyLTIyYTUtNGQ0MS1iNGIyLTgwMmRkNzVhOTEyZSIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.eT6AuvfQ6t0FNqd77QFoSGAjnwjdZezplbVDl0Kp43Y",
-      "TintaFinal-Shop.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6ImU1YjNiZDQ3LWQzODYtNGUyYi05Y2ExLTBhNjIwNmU2MTk4NCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.TrA8fbjJd2dHTmvrR4G7StPMDNtcZ_09fFrFbPIZjho"
-    }
-  },
-  "status": {
-    "uploadStatus": 2,
-    "uploadThumbnailStatusDict": {
-      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6ImE5ZTMxZjJjLTk0YmMtNDdmOS05M2RjLTE4NjM0MWI4ODY1OCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.Q9_qkhittvZ_CCzWoDgR7SfaKbq-ndCzOCHTTxHX4t4": {
-        "homepageThumbnailId": "45a813f2-69ff-47dc-b64a-c60411f9ec18",
-        "assetId": 81297545106541,
-        "moderationStatus": "Approved"
-      },
-      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6Ijk3OTI5NTdjLTg4OWMtNDJmZi1hMTAzLTU1MzdkNGE1MzE4NiIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.imlO6du9XPRzKk8MAWqCA5McpJnaWzF8RyQwg8LxFM4": {
-        "homepageThumbnailId": "9c9d37da-954d-44af-85aa-90f53de94400",
-        "assetId": 102691585683496,
-        "moderationStatus": "Approved"
-      },
-      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6ImQxZmFkZjliLTVhODEtNDcwOS1hZGZiLWVmMmNmNTBjZTkyZCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.DK3ydAh7ViZPCSZHYd0AIDvvHYBVxXWz_aY2nsXB7z4": {
-        "homepageThumbnailId": "2e2605b7-0a56-4871-b7e9-3b5757aaee16",
-        "assetId": 89122149779070,
-        "moderationStatus": "Approved"
-      },
-      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjVhNjgwZTUyLTIyYTUtNGQ0MS1iNGIyLTgwMmRkNzVhOTEyZSIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.eT6AuvfQ6t0FNqd77QFoSGAjnwjdZezplbVDl0Kp43Y": {
-        "homepageThumbnailId": "07df6693-4459-4def-9e11-1ef472be64b8",
-        "assetId": 97466820809504,
-        "moderationStatus": "Approved"
-      },
-      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6ImU1YjNiZDQ3LWQzODYtNGUyYi05Y2ExLTBhNjIwNmU2MTk4NCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.TrA8fbjJd2dHTmvrR4G7StPMDNtcZ_09fFrFbPIZjho": {
-        "homepageThumbnailId": "f057e209-7b92-476d-af2b-be28793242cb",
-        "assetId": 136876413568899,
-        "moderationStatus": "Approved"
-      }
-    }
-  }
-}
+Duplicado eliminado: 3075c1f1-79a3-442f-a24c-8a3bc0d37c83
+Duplicado eliminado: 4841b13d-ffc3-4d1d-baf8-ab29fb146125
+Duplicado eliminado: 9790e7dc-edd6-4709-8c48-8d198b8d27d5
+Duplicado eliminado: b6d3e7f5-99b3-44ff-815a-8ac8563d2f1b
+Duplicado eliminado: ba795341-cce3-45c2-b4a1-9c7b9145b6b9
+Set aprobado existente reutilizado: 5 miniaturas.
