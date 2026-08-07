@@ -2,9 +2,9 @@
 
 - Estado: PENDIENTE_ROBLOX
 - Universe ID: 8973271699
-- Idioma usado: en
+- Idioma usado: es
 - Nueva imageId: NO_GENERADA
 - River imageId objetivo: 80353689172158
 - Scope legacy requerido: legacy-universe:manage
-- Actualizado UTC: 2026-08-07T19:32:39.156119+00:00
-- Detalle: Roblox aceptó la carga pero todavía no publicó una nueva imageId. No se volverá a subir otra copia.
+- Actualizado UTC: 2026-08-07T19:35:39.300396+00:00
+- Detalle: Existe una carga ya aceptada por Roblox; se bloqueó cualquier nueva carga y se espera moderación/propagación.

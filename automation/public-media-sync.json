@@ -1,6 +1,6 @@
 {
   "mode": "PENDIENTE_ROBLOX",
-  "acceptedAt": "2026-08-07T19:32:39.155649+00:00",
+  "checkedAt": "2026-08-07T19:35:39.300097+00:00",
   "languageDiscovery": {
     "statusCode": 200,
     "body": "{\"languageFamily\":{\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\"},\"defaultLocale\":{\"id\":2,\"locale\":\"es_es\",\"localeCode\":\"es_es\",\"name\":\"Spanish (Spain)\",\"nativeName\":\"Español (España)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}},\"childLocales\":[{\"id\":2,\"locale\":\"es_es\",\"localeCode\":\"es_es\",\"name\":\"Spanish (Spain)\",\"nativeName\":\"Español (España)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}},{\"id\":51,\"locale\":\"es_mx\",\"localeCode\":\"es_mx\",\"name\":\"Spanish (Mexico)\",\"nativeName\":\"Español (México)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}}]}",
@@ -63,43 +63,7 @@
     "fr",
     "de"
   ],
-  "languageCode": "en",
-  "upload": {
-    "success": true,
-    "languageCode": "en",
-    "field": "file",
-    "response": {
-      "mediaAssetId": "139553748441773"
-    },
-    "attempts": [
-      {
-        "languageCode": "es",
-        "field": "file",
-        "statusCode": 400,
-        "body": "{\"errors\":[{\"code\":26,\"message\":\"You can't update translations for source language\"}]}"
-      },
-      {
-        "languageCode": "en",
-        "field": "file",
-        "statusCode": 200,
-        "body": "{\"mediaAssetId\":\"139553748441773\"}"
-      }
-    ]
-  },
-  "before": {
-    "data": [
-      {
-        "assetTypeId": 1,
-        "assetType": "Image",
-        "imageId": 80353689172158,
-        "videoHash": null,
-        "videoTitle": null,
-        "approved": true,
-        "altText": null
-      }
-    ]
-  },
-  "lastPublicMedia": {
+  "publicMedia": {
     "data": [
       {
         "assetTypeId": 1,
