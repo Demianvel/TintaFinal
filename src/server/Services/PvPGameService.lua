@@ -11,12 +11,14 @@ local WeaponService = require(script.Parent.WeaponService)
 local PvPGameService = {}
 local remotes
 local matchRunning = false
+local warmupRunning = false
 local currentArena
 local currentMode = "TeamSplash"
 local participants = {}
+local warmupPlayers = {}
 local afkPlayers = {}
 local scores = {}
-local teamScores = { Cyan = 0, Magenta = 0 }
+local teamScores = {Cyan = 0, Magenta = 0}
 local mapIndex = 0
 local matchIndex = 0
 
@@ -26,18 +28,11 @@ local state = {
     CurrentGame = "PvP",
     CurrentMap = nil,
     Mode = "TeamSplash",
-    OfferedGames = {},
-    Votes = {},
-    AliveCount = 0,
     Announcement = "Preparando Tinta Final PvP...",
-    Scores = {},
-    TeamScores = { Cyan = 0, Magenta = 0 },
-    TeamCounts = { Cyan = 0, Magenta = 0 },
-    Wave = 0,
-    MaxParticipants = Config.Match.MaxParticipants,
+    TeamScores = {Cyan = 0, Magenta = 0},
+    TeamCounts = {Cyan = 0, Magenta = 0},
     Podium = {},
     SeasonId = Config.Competitive.SeasonId,
-    ConnectedPlayers = 0,
     RotationMode = "AUTO",
     BotsEnabled = false,
     VotingEnabled = false,
@@ -91,8 +86,8 @@ local function publicState()
         AliveCount = #participantList(),
         Announcement = state.Announcement,
         Scores = scoreCopy,
-        TeamScores = { Cyan = teamScores.Cyan, Magenta = teamScores.Magenta },
-        TeamCounts = { Cyan = cyan, Magenta = magenta },
+        TeamScores = {Cyan = teamScores.Cyan, Magenta = teamScores.Magenta},
+        TeamCounts = {Cyan = cyan, Magenta = magenta},
         Wave = 0,
         MaxParticipants = Config.Match.MaxParticipants,
         Podium = table.clone(state.Podium),
@@ -101,6 +96,7 @@ local function publicState()
         RotationMode = "AUTO",
         BotsEnabled = false,
         VotingEnabled = false,
+        Warmup = warmupRunning,
     }
 end
 
@@ -108,14 +104,18 @@ local function broadcast()
     if remotes and remotes:FindFirstChild("GameState") then remotes.GameState:FireAllClients(publicState()) end
 end
 
-local function countdown(seconds, phase, text)
+local function countdown(seconds, phase, message)
     state.Phase = phase
-    state.Announcement = text or phase
+    state.Announcement = message or phase
     for remaining = seconds, 0, -1 do
         state.TimeLeft = remaining
         broadcast()
         task.wait(1)
     end
+end
+
+local function previewMap()
+    return Config.Shooter.MapOrder[(mapIndex % #Config.Shooter.MapOrder) + 1]
 end
 
 local function nextMap()
@@ -141,8 +141,8 @@ local function assignTeams(list)
     end
     local sorted = table.clone(list)
     table.sort(sorted, function(a, b) return ratingOf(a) > ratingOf(b) end)
-    local totals = { Cyan = 0, Magenta = 0 }
-    local counts = { Cyan = 0, Magenta = 0 }
+    local totals = {Cyan = 0, Magenta = 0}
+    local counts = {Cyan = 0, Magenta = 0}
     local maxTeam = math.ceil(#sorted / 2)
     for _, player in ipairs(sorted) do
         local team
@@ -159,11 +159,11 @@ end
 local function spawnFor(player)
     if not currentArena then return MapService.GetPoint("Lobby") end
     if currentMode == "TeamSplash" then
-        local list = player:GetAttribute("ShooterTeam") == "Magenta" and currentArena.MagentaSpawns or currentArena.CyanSpawns
-        return list[((player.UserId % #list) + 1)]
+        local points = player:GetAttribute("ShooterTeam") == "Magenta" and currentArena.MagentaSpawns or currentArena.CyanSpawns
+        return points[((player.UserId % #points) + 1)]
     end
-    local list = currentArena.FFASpawns
-    return list[((player.UserId % #list) + 1)]
+    local points = currentArena.FFASpawns
+    return points[((player.UserId % #points) + 1)]
 end
 
 local function setupCharacter(player, character)
@@ -172,22 +172,25 @@ local function setupCharacter(player, character)
     local humanoid = character:WaitForChild("Humanoid", 8)
     if not humanoid then return end
     humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
+    humanoid.AutoRotate = true
     character:SetAttribute("TintaKillRegistered", false)
     WeaponService.ResetPlayer(player)
-    task.delay(0.2, function()
+
+    task.delay(0.25, function()
         if not player.Parent or not character.Parent then return end
-        if matchRunning and participants[player] then
+        if (matchRunning and participants[player]) or warmupPlayers[player] then
             MapService.Teleport(player, spawnFor(player))
         else
             MapService.Teleport(player, MapService.GetPoint("Lobby"))
         end
     end)
+
     humanoid.Died:Connect(function()
         local profile = ProfileService.Get(player)
         if profile and matchRunning and participants[player] then profile.Stats.Deaths += 1 end
-        if matchRunning and participants[player] then
+        if (matchRunning and participants[player]) or warmupPlayers[player] then
             task.delay(Config.Match.RespawnSeconds, function()
-                if player.Parent and matchRunning and participants[player] then player:LoadCharacter() end
+                if player.Parent and ((matchRunning and participants[player]) or warmupPlayers[player]) then player:LoadCharacter() end
             end)
         end
     end)
@@ -227,15 +230,14 @@ end
 local function sortedPodium()
     local list = participantList()
     table.sort(list, function(a, b)
-        local sa = scores[a.UserId] or 0
-        local sb = scores[b.UserId] or 0
+        local sa, sb = scores[a.UserId] or 0, scores[b.UserId] or 0
         if sa == sb then return ratingOf(a) > ratingOf(b) end
         return sa > sb
     end)
     local podium = {}
     for index = 1, math.min(3, #list) do
         local p = list[index]
-        podium[index] = { UserId = p.UserId, Name = p.DisplayName, Score = scores[p.UserId] or 0 }
+        podium[index] = {UserId = p.UserId, Name = p.DisplayName, Score = scores[p.UserId] or 0}
     end
     return podium
 end
@@ -254,9 +256,54 @@ local function winnerSet()
     else
         local best = -1
         for _, player in ipairs(participantList()) do best = math.max(best, scores[player.UserId] or 0) end
-        for _, player in ipairs(participantList()) do if (scores[player.UserId] or 0) == best then winners[player] = true end end
+        for _, player in ipairs(participantList()) do
+            if (scores[player.UserId] or 0) == best then winners[player] = true end
+        end
     end
     return winners
+end
+
+local function stopWarmup(teleportToLobby)
+    if not warmupRunning then return end
+    warmupRunning = false
+    WeaponService.SetActive(false)
+    for player in pairs(warmupPlayers) do
+        if player.Parent then
+            player:SetAttribute("InShooterMatch", false)
+            player:SetAttribute("ShooterActive", false)
+            player:SetAttribute("ShooterTeam", "Lobby")
+            if teleportToLobby and player.Character then MapService.Teleport(player, MapService.GetPoint("Lobby")) end
+        end
+    end
+    table.clear(warmupPlayers)
+    workspace:SetAttribute("TintaFinalShooterMode", "Lobby")
+end
+
+local function startWarmup(player)
+    if warmupRunning and warmupPlayers[player] then return end
+    stopWarmup(false)
+    currentMode = "Warmup"
+    state.Mode = "Warmup"
+    state.CurrentMap = previewMap()
+    currentArena = MapService.BuildGame(state.CurrentMap)
+    warmupRunning = true
+    warmupPlayers[player] = true
+    player:SetAttribute("InShooterMatch", true)
+    player:SetAttribute("ShooterTeam", "Solo")
+    workspace:SetAttribute("TintaFinalShooterMode", "Warmup")
+    WeaponService.SetActive(true)
+    WeaponService.SetPlayerActive(player, true)
+    if player.Character then
+        CharacterStyleService.Apply(player, player.Character)
+        MapService.Teleport(player, spawnFor(player))
+        WeaponService.ResetPlayer(player)
+    else
+        player:LoadCharacter()
+    end
+    state.Phase = "Warmup"
+    state.TimeLeft = 0
+    state.Announcement = "CALENTAMIENTO SIN BOTS · ESPERANDO OTRO JUGADOR"
+    broadcast()
 end
 
 local function finishMatch()
@@ -298,19 +345,24 @@ local function finishMatch()
     countdown(Config.Match.ResultsSeconds, "Results", announcement)
     participants = {}
     scores = {}
-    teamScores = { Cyan = 0, Magenta = 0 }
+    teamScores = {Cyan = 0, Magenta = 0}
     state.Podium = {}
+    currentArena = nil
+    state.CurrentMap = nil
+    workspace:SetAttribute("TintaFinalShooterMode", "Lobby")
 end
 
 local function beginMatch(list)
+    stopWarmup(false)
     participants = {}
     scores = {}
-    teamScores = { Cyan = 0, Magenta = 0 }
+    teamScores = {Cyan = 0, Magenta = 0}
     for _, player in ipairs(list) do participants[player] = true scores[player.UserId] = 0 end
     currentMode = nextMode(#list)
     assignTeams(list)
     state.CurrentMap = nextMap()
     state.Mode = currentMode
+    countdown(Config.Match.LoadingSeconds, "Loading", "PREPARANDO " .. tostring(state.CurrentMap))
     currentArena = MapService.BuildGame(state.CurrentMap)
     MapService.ActivatePickups(function(player, pickupType, amount)
         if not matchRunning or not participants[player] then return end
@@ -321,7 +373,7 @@ local function beginMatch(list)
             WeaponService.AddAmmo(player, amount)
         end
     end)
-    countdown(Config.Match.LoadingSeconds, "Loading", "ROTACIÓN AUTOMÁTICA · " .. tostring(state.CurrentMap))
+
     matchRunning = true
     workspace:SetAttribute("TintaFinalShooterMode", currentMode)
     for _, player in ipairs(list) do
@@ -330,6 +382,7 @@ local function beginMatch(list)
         if player.Character then
             CharacterStyleService.Apply(player, player.Character)
             MapService.Teleport(player, spawnFor(player))
+            WeaponService.ResetPlayer(player)
         else
             player:LoadCharacter()
         end
@@ -337,6 +390,8 @@ local function beginMatch(list)
     WeaponService.SetActive(true)
     state.Phase = "Combat"
     state.Announcement = currentMode == "TeamSplash" and "PVP · CIAN VS MAGENTA" or "PVP · TODOS CONTRA TODOS"
+    broadcast()
+
     local deadline = os.clock() + Config.Match.RoundSeconds
     while matchRunning and os.clock() < deadline and not combatFinished() do
         state.TimeLeft = math.max(0, math.ceil(deadline - os.clock()))
@@ -349,21 +404,26 @@ end
 function PvPGameService.Initialize(remoteFolder)
     remotes = remoteFolder
     MapService.BuildLobby()
-    WeaponService.Initialize(remoteFolder, {
-        OnPlayerKilled = addKill,
-        OnBotKilled = function() end,
-    })
+    WeaponService.Initialize(remoteFolder, {OnPlayerKilled = addKill, OnBotKilled = function() end})
     state.Phase = "Waiting"
     state.Announcement = "ESPERANDO JUGADORES PARA PVP"
+    workspace:SetAttribute("TintaFinalShooterMode", "Lobby")
     broadcast()
 end
 
-function PvPGameService.GetState() return publicState() end
-function PvPGameService.CastVote() return false, "La votación fue eliminada: los mapas rotan automáticamente." end
+function PvPGameService.GetState()
+    return publicState()
+end
+
+function PvPGameService.CastVote()
+    return false, "La votación fue eliminada: los mapas rotan automáticamente."
+end
 
 function PvPGameService.ToggleAFK(player)
     afkPlayers[player] = not afkPlayers[player]
     player:SetAttribute("AFKMode", afkPlayers[player] == true)
+    player:SetAttribute("TintaQueueTime", workspace:GetServerTimeNow())
+    if afkPlayers[player] and warmupPlayers[player] then stopWarmup(true) end
     return true, afkPlayers[player] and "Modo AFK activado." or "Volviste a la cola PvP."
 end
 
@@ -373,22 +433,29 @@ end
 
 function PvPGameService.PlayerRemoving(player)
     participants[player] = nil
+    warmupPlayers[player] = nil
     afkPlayers[player] = nil
     WeaponService.PlayerRemoving(player)
 end
 
 function PvPGameService.StartLoop()
     task.spawn(function()
+        task.wait(2)
         while true do
             local queued = queuePlayers()
-            if #queued < math.max(2, Config.Match.MinimumPlayers) then
+            if #queued == 0 then
+                stopWarmup(true)
                 state.Phase = "Waiting"
                 state.TimeLeft = 0
                 state.CurrentMap = nil
-                state.Announcement = string.format("PVP PURO · ESPERANDO JUGADORES (%d/2)", #queued)
+                state.Announcement = "PVP PURO · ESPERANDO JUGADORES"
                 broadcast()
                 task.wait(1)
+            elseif #queued == 1 then
+                startWarmup(queued[1])
+                task.wait(1)
             else
+                stopWarmup(false)
                 countdown(Config.Match.IntermissionSeconds, "Intermission", "PRÓXIMA PARTIDA PVP · MAPA AUTOMÁTICO")
                 queued = queuePlayers()
                 if #queued >= 2 then beginMatch(queued) end

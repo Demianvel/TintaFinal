@@ -47,8 +47,7 @@ local function spreadDirection(direction, degrees)
     if degrees <= 0 then return direction.Unit end
     local pitch = math.rad(random:NextNumber(-degrees, degrees))
     local yaw = math.rad(random:NextNumber(-degrees, degrees))
-    local frame = CFrame.lookAt(Vector3.zero, direction.Unit) * CFrame.Angles(pitch, yaw, 0)
-    return frame.LookVector
+    return (CFrame.lookAt(Vector3.zero, direction.Unit) * CFrame.Angles(pitch, yaw, 0)).LookVector
 end
 
 local function targetHumanoid(instance)
@@ -63,8 +62,12 @@ local function friendlyFire(shooter, targetPlayer)
     if not targetPlayer or shooter == targetPlayer then return shooter == targetPlayer end
     local mode = workspace:GetAttribute("TintaFinalShooterMode")
     if mode ~= "TeamSplash" then return false end
-    local shooterTeam = shooter:GetAttribute("ShooterTeam")
-    return shooterTeam ~= nil and shooterTeam == targetPlayer:GetAttribute("ShooterTeam")
+    return shooter:GetAttribute("ShooterTeam") == targetPlayer:GetAttribute("ShooterTeam")
+end
+
+local function canDamagePlayers()
+    local mode = workspace:GetAttribute("TintaFinalShooterMode")
+    return mode == "TeamSplash" or mode == "FreeSplash"
 end
 
 local function visualShot(origin, destination, weaponId)
@@ -87,14 +90,24 @@ end
 function WeaponService.SetActive(value)
     active = value == true
     for _, player in ipairs(Players:GetPlayers()) do
-        player:SetAttribute("ShooterActive", active)
-        if active then pushAmmo(player) end
+        if player:GetAttribute("InShooterMatch") then
+            player:SetAttribute("ShooterActive", active)
+            if active then pushAmmo(player) end
+        elseif not active then
+            player:SetAttribute("ShooterActive", false)
+        end
     end
+end
+
+function WeaponService.SetPlayerActive(player, value)
+    if not player or not player.Parent then return end
+    player:SetAttribute("ShooterActive", value == true)
+    if value then pushAmmo(player) end
 end
 
 function WeaponService.ResetPlayer(player)
     sessions[player] = nil
-    if active then pushAmmo(player) end
+    if active and player:GetAttribute("InShooterMatch") then pushAmmo(player) end
 end
 
 function WeaponService.SelectWeapon(player, weaponId)
@@ -152,40 +165,35 @@ function WeaponService.Fire(player, origin, direction)
 
     local rayParams = RaycastParams.new()
     rayParams.FilterType = Enum.RaycastFilterType.Exclude
-    rayParams.FilterDescendantsInstances = { character }
+    rayParams.FilterDescendantsInstances = {character}
     rayParams.IgnoreWater = true
 
     local registeredHit = false
     local registeredHeadshot = false
+    local damageEnabled = canDamagePlayers()
+
     for _ = 1, definition.Pellets do
         local shotDirection = spreadDirection(direction, definition.SpreadDegrees)
         local result = workspace:Raycast(origin, shotDirection * definition.Range, rayParams)
         local hitPosition = result and result.Position or (origin + shotDirection * definition.Range)
         visualShot(origin, hitPosition, current.WeaponId)
 
-        if result then
+        if result and damageEnabled then
             local model, targetHumanoidObject, targetPlayer = targetHumanoid(result.Instance)
-            if targetHumanoidObject and not friendlyFire(player, targetPlayer) then
-                local isBot = model:GetAttribute("TintaBot") == true
-                if targetPlayer or isBot then
-                    local headshot = result.Instance.Name == "Head"
-                    local damage = definition.Damage * (headshot and definition.HeadshotMultiplier or 1)
-                    local before = targetHumanoidObject.Health
-                    targetHumanoidObject:TakeDamage(damage)
-                    local dealt = math.max(0, math.min(before, damage))
-                    local profile = ProfileService.Get(player)
-                    if profile then profile.Stats.Damage += math.floor(dealt) end
-                    registeredHit = true
-                    registeredHeadshot = registeredHeadshot or headshot
+            if targetHumanoidObject and targetPlayer and not friendlyFire(player, targetPlayer) then
+                local headshot = result.Instance.Name == "Head"
+                local damage = definition.Damage * (headshot and definition.HeadshotMultiplier or 1)
+                local before = targetHumanoidObject.Health
+                targetHumanoidObject:TakeDamage(damage)
+                local dealt = math.max(0, math.min(before, damage))
+                local profile = ProfileService.Get(player)
+                if profile then profile.Stats.Damage += math.floor(dealt) end
+                registeredHit = true
+                registeredHeadshot = registeredHeadshot or headshot
 
-                    if before > 0 and targetHumanoidObject.Health <= 0 and not model:GetAttribute("TintaKillRegistered") then
-                        model:SetAttribute("TintaKillRegistered", true)
-                        if targetPlayer then
-                            if callbacks.OnPlayerKilled then callbacks.OnPlayerKilled(player, targetPlayer, headshot) end
-                        elseif isBot and callbacks.OnBotKilled then
-                            callbacks.OnBotKilled(player, model, headshot)
-                        end
-                    end
+                if before > 0 and targetHumanoidObject.Health <= 0 and not model:GetAttribute("TintaKillRegistered") then
+                    model:SetAttribute("TintaKillRegistered", true)
+                    if callbacks.OnPlayerKilled then callbacks.OnPlayerKilled(player, targetPlayer, headshot) end
                 end
             end
         end
