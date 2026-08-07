@@ -29,7 +29,7 @@ local function ensureRemote(className, name)
 end
 
 local GetSnapshot = ensureRemote("RemoteFunction", "GetSnapshot")
-local CastVote = ensureRemote("RemoteFunction", "CastVote") -- compatibilidad: siempre deshabilitado
+local CastVote = ensureRemote("RemoteFunction", "CastVote")
 local ShopPurchase = ensureRemote("RemoteFunction", "ShopPurchase")
 local Spin = ensureRemote("RemoteFunction", "Spin")
 local BuyPremiumWithTintaMoney = ensureRemote("RemoteFunction", "BuyPremiumWithTintaMoney")
@@ -45,6 +45,7 @@ local SelectDifficulty = ensureRemote("RemoteFunction", "SelectDifficulty")
 for _, name in ipairs({
     "GameState", "ProfileState", "Victory", "Eliminated", "StageReward", "AFKReward",
     "AmmoState", "HitConfirm", "KillFeed", "ShotFX", "FireWeapon", "ReloadWeapon",
+    "MeleeHit", "DuelQueueState",
 }) do
     ensureRemote("RemoteEvent", name)
 end
@@ -60,9 +61,10 @@ local function allow(player, action, cooldown)
 end
 
 local function snapshot(player)
+    local gameState = PvPGameService.GetState()
     return {
         Profile = ProfileService.Public(player),
-        Game = PvPGameService.GetState(),
+        Game = gameState,
         Config = {
             GameName = Config.GameName,
             UniverseId = Config.UniverseId,
@@ -84,10 +86,12 @@ local function snapshot(player)
             ShopOrder = Config.ShopOrder,
             Weapons = Weapons,
             PvP = {
-                BotsEnabled = false,
+                BotsEnabled = gameState.BotsEnabled == true,
+                BotPolicy = "OnlySingleRealPlayerFallback",
                 VotingEnabled = false,
-                MapRotation = "Automatic",
-                MinimumPlayers = 2,
+                MapRotation = "DuelParcels",
+                DuelSizes = {1, 2, 6, 10},
+                QueueCountdownSeconds = 10,
                 MaxPlayers = Config.Match.MaxParticipants,
             },
             Monetization = {
@@ -113,7 +117,7 @@ end
 
 GetSnapshot.OnServerInvoke = function(player) return snapshot(player) end
 CastVote.OnServerInvoke = function()
-    return false, "Sin votación: Tinta Final usa rotación automática de mapas."
+    return false, "Sin votación: elegí una parcela 1v1, 2v2, 6v6 o 10v10."
 end
 ShopPurchase.OnServerInvoke = function(player, itemId)
     if not allow(player, "Shop", 0.35) then return false, "Esperá un momento." end
@@ -164,11 +168,18 @@ GetLeaderboards.OnServerInvoke = function(player, board, limit)
     if board == "All" or board == nil then return RankingService.GetBundle(limit) end
     return RankingService.GetLeaderboard(tostring(board), limit)
 end
-QueueGuard.OnServerInvoke = function() return false, "Tinta Final ahora es PvP competitivo." end
-SelectDifficulty.OnServerInvoke = function() return false, "No hay modo survival ni bots: solo PvP entre jugadores." end
+QueueGuard.OnServerInvoke = function()
+    return false, "Para jugar, caminá hasta una parcela 1v1, 2v2, 6v6 o 10v10."
+end
+SelectDifficulty.OnServerInvoke = function()
+    return false, "Los bots solo aparecen si un único jugador llega solo al servidor de duelo."
+end
 
 local function setupPlayer(player)
-    if ProfileService.Get(player) then return end
+    if ProfileService.Get(player) then
+        PvPGameService.RegisterPlayer(player)
+        return
+    end
     ProfileService.Load(player)
     syncPremiumOwnership(player)
     player:SetAttribute("InShooterMatch", false)
@@ -176,6 +187,7 @@ local function setupPlayer(player)
     player:SetAttribute("AFKMode", false)
     player:SetAttribute("ShooterActive", false)
     player:SetAttribute("TintaQueueTime", workspace:GetServerTimeNow())
+    PvPGameService.RegisterPlayer(player)
     player.CharacterAdded:Connect(function(character) PvPGameService.OnCharacterAdded(player, character) end)
     if player.Character then task.spawn(PvPGameService.OnCharacterAdded, player, player.Character) end
     pushProfile(player)
