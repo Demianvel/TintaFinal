@@ -1,27 +1,2 @@
 Propietario resuelto: demianvelo (8433192682)
-Renderizando assets/branding/main.svg -> build/branding/MainMenu.png
-Subiendo MainMenu a Roblox...
-MainMenu: 97839776094055
-Renderizando assets/branding/loading.svg -> build/branding/Loading.png
-Subiendo Loading a Roblox...
-Loading: 129720347915606
-Renderizando assets/branding/lobby.svg -> build/branding/Lobby.png
-Subiendo Lobby a Roblox...
-Lobby: 89095985932947
-Renderizando assets/branding/round1.svg -> build/branding/Round1.png
-Subiendo Round1 a Roblox...
-Round1: 125053219308080
-Renderizando assets/branding/round2.svg -> build/branding/Round2.png
-Subiendo Round2 a Roblox...
-Round2: 84361702484652
-Renderizando assets/branding/shop.svg -> build/branding/Shop.png
-Subiendo Shop a Roblox...
-Shop: 138366310874881
-{
-  "MainMenu": "97839776094055",
-  "Loading": "129720347915606",
-  "Lobby": "89095985932947",
-  "Round1": "125053219308080",
-  "Round2": "84361702484652",
-  "Shop": "138366310874881"
-}
+Los assets competitivos ya existen; se reutilizan los IDs guardados.
