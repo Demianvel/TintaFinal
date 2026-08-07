@@ -22,6 +22,7 @@ local aiming = false
 local joystickTouch
 local joystickVector = Vector2.zero
 local keyboardWasMoving = false
+local sprintTouchHeld = false
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "TintaFinalMovementControls"
@@ -65,7 +66,6 @@ local function makeButton(textValue, color, position, size, anchor)
     return button
 end
 
--- Joystick propio: evita depender de que Roblox muestre correctamente su thumbstick predeterminado.
 local joystickBase = Instance.new("Frame")
 joystickBase.Name = "MoveJoystick"
 joystickBase.AnchorPoint = Vector2.new(0, 1)
@@ -92,6 +92,19 @@ joystickKnob.Parent = joystickBase
 round(joystickKnob)
 outline(joystickKnob, 0.45)
 
+local joystickArrow = Instance.new("TextLabel")
+joystickArrow.Name = "DirectionArrow"
+joystickArrow.AnchorPoint = Vector2.new(0.5, 0.5)
+joystickArrow.Position = UDim2.fromScale(0.5, 0.5)
+joystickArrow.Size = UDim2.fromOffset(36, 36)
+joystickArrow.BackgroundTransparency = 1
+joystickArrow.Text = "▲"
+joystickArrow.TextColor3 = Color3.new(1, 1, 1)
+joystickArrow.Font = Enum.Font.GothamBlack
+joystickArrow.TextScaled = true
+joystickArrow.Visible = false
+joystickArrow.Parent = joystickKnob
+
 local sprintButton = makeButton(
     "CORRER",
     Color3.fromRGB(255, 132, 21),
@@ -103,7 +116,7 @@ local sprintButton = makeButton(
 local aimButton = makeButton(
     "APUNTAR",
     Color3.fromRGB(0, 226, 239),
-    UDim2.new(1, -26, 1, -166),
+    UDim2.new(1, -26, 1, -230),
     78
 )
 
@@ -116,6 +129,10 @@ local jumpButton = makeButton(
 
 local function isCombat()
     return player:GetAttribute("ShooterActive") == true and player:GetAttribute("InShooterMatch") == true
+end
+
+local function canMove()
+    return player:GetAttribute("AFKMode") ~= true
 end
 
 local function currentHumanoid()
@@ -141,7 +158,7 @@ local function ensureMovable()
     end
 
     local desired = baseWalkSpeed
-    if sprinting and isCombat() then
+    if sprinting and canMove() then
         desired = math.min(MAX_SPRINT_SPEED, baseWalkSpeed * SPRINT_MULTIPLIER)
     end
     if hum.WalkSpeed ~= desired then hum.WalkSpeed = desired end
@@ -160,7 +177,7 @@ local function setAim(enabled)
 end
 
 local function setSprint(enabled)
-    sprinting = enabled == true and isCombat()
+    sprinting = enabled == true and canMove()
     if sprinting and aiming then setAim(false) end
     sprintButton.BackgroundTransparency = sprinting and 0.04 or 0.20
     ensureMovable()
@@ -170,8 +187,10 @@ local function resetJoystick()
     joystickTouch = nil
     joystickVector = Vector2.zero
     joystickKnob.Position = UDim2.fromScale(0.5, 0.5)
+    joystickArrow.Visible = false
+    joystickArrow.Rotation = 0
     local hum = currentHumanoid()
-    if hum and UserInputService.TouchEnabled then
+    if hum and UserInputService.TouchEnabled and not sprintTouchHeld then
         hum:Move(Vector3.zero, true)
     end
 end
@@ -185,17 +204,23 @@ local function updateJoystick(screenPosition)
     if magnitude > radius then delta = delta.Unit * radius end
 
     joystickVector = delta / radius
-    if joystickVector.Magnitude < JOYSTICK_DEADZONE then joystickVector = Vector2.zero end
+    if joystickVector.Magnitude < JOYSTICK_DEADZONE then
+        joystickVector = Vector2.zero
+        joystickArrow.Visible = false
+    else
+        joystickArrow.Visible = true
+        joystickArrow.Rotation = math.deg(math.atan2(joystickVector.X, -joystickVector.Y))
+    end
     joystickKnob.Position = UDim2.new(0.5, delta.X, 0.5, delta.Y)
 end
 
 local function updateTouchVisibility()
-    local visible = UserInputService.TouchEnabled and isCombat()
-    joystickBase.Visible = visible
-    sprintButton.Visible = visible
-    aimButton.Visible = visible
-    jumpButton.Visible = visible
-    if not visible then resetJoystick() end
+    local touchMovement = UserInputService.TouchEnabled and canMove()
+    joystickBase.Visible = touchMovement
+    sprintButton.Visible = touchMovement
+    jumpButton.Visible = touchMovement
+    aimButton.Visible = UserInputService.TouchEnabled and isCombat()
+    if not touchMovement then resetJoystick() end
 end
 
 local function bindCharacter(character)
@@ -207,6 +232,7 @@ local function bindCharacter(character)
     baseWalkSpeed = math.clamp(detected > 0 and detected or DEFAULT_WALK_SPEED, 14, 20)
     sprinting = false
     aiming = false
+    sprintTouchHeld = false
     resetJoystick()
     ensureMovable()
 end
@@ -216,9 +242,8 @@ player.CharacterAdded:Connect(function(character)
 end)
 if player.Character then task.defer(bindCharacter, player.Character) end
 
--- Joystick touch.
 joystickBase.InputBegan:Connect(function(input)
-    if input.UserInputType ~= Enum.UserInputType.Touch or not isCombat() then return end
+    if input.UserInputType ~= Enum.UserInputType.Touch or not canMove() then return end
     if joystickTouch then return end
     joystickTouch = input
     updateJoystick(input.Position)
@@ -232,14 +257,16 @@ UserInputService.TouchEnded:Connect(function(input)
     if joystickTouch and input == joystickTouch then resetJoystick() end
 end)
 
--- Sprint móvil: mantener pulsado.
+-- Mantener CORRER apretado también avanza automáticamente hacia delante.
 sprintButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        sprintTouchHeld = true
         setSprint(true)
     end
 end)
 sprintButton.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        sprintTouchHeld = false
         setSprint(false)
     end
 end)
@@ -250,13 +277,12 @@ end)
 
 jumpButton.Activated:Connect(function()
     local hum = currentHumanoid()
-    if hum and isCombat() and hum.FloorMaterial ~= Enum.Material.Air then
+    if hum and canMove() and hum.FloorMaterial ~= Enum.Material.Air then
         hum.Jump = true
         hum:ChangeState(Enum.HumanoidStateType.Jumping)
     end
 end)
 
--- Teclado / gamepad.
 local function sprintAction(_, state)
     if state == Enum.UserInputState.Begin then setSprint(true) end
     if state == Enum.UserInputState.End or state == Enum.UserInputState.Cancel then setSprint(false) end
@@ -283,15 +309,21 @@ local function keyboardVector()
     return vector
 end
 
--- Fallback de movimiento. En móvil usa el joystick Tinta; en PC garantiza WASD aunque PlayerModule se haya deshabilitado.
 RunService.RenderStepped:Connect(function()
-    if not isCombat() then return end
+    if not canMove() then return end
     local hum = currentHumanoid()
     if not hum then return end
     ensureMovable()
 
+    -- En coordenadas relativas a cámara, Z negativa = adelante y Z positiva = atrás.
+    -- El joystick de pantalla tiene Y negativa arriba y positiva abajo, por eso se usa Y sin invertir.
     if UserInputService.TouchEnabled and joystickVector.Magnitude >= JOYSTICK_DEADZONE then
-        hum:Move(Vector3.new(joystickVector.X, 0, -joystickVector.Y), true)
+        hum:Move(Vector3.new(joystickVector.X, 0, joystickVector.Y), true)
+        return
+    end
+
+    if UserInputService.TouchEnabled and sprintTouchHeld then
+        hum:Move(Vector3.new(0, 0, -1), true)
         return
     end
 
@@ -306,9 +338,10 @@ RunService.RenderStepped:Connect(function()
 end)
 
 local function stateChanged()
-    if not isCombat() then
+    if not isCombat() then setAim(false) end
+    if not canMove() then
+        sprintTouchHeld = false
         setSprint(false)
-        setAim(false)
         resetJoystick()
     else
         task.defer(ensureMovable)
@@ -318,6 +351,7 @@ end
 
 player:GetAttributeChangedSignal("ShooterActive"):Connect(stateChanged)
 player:GetAttributeChangedSignal("InShooterMatch"):Connect(stateChanged)
+player:GetAttributeChangedSignal("AFKMode"):Connect(stateChanged)
 stateChanged()
 
-print("[TintaFinal] Movimiento PvP reforzado: joystick, caminar, correr, saltar y apuntar.")
+print("[TintaFinal] Movimiento móvil v2: joystick correcto, flecha orientada y CORRER con avance.")
