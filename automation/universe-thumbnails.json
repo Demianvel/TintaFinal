@@ -1,0 +1,42 @@
+{
+  "universeId": 8973271699,
+  "upload": {
+    "fileToOperationIdDict": {
+      "TintaFinal-Main.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6Ijc4NzJmNzUyLTVkNWItNDE5YS1hNGEzLTkzZTFkZjYyY2VjMiIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.Mage8VXvWIJLUVJiYaX6CHhz-1baGZM7rmct0gZ6jCo",
+      "TintaFinal-Lobby.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjI2MmMxNDJmLWE4N2ItNDgxMC04ZWQ3LTIzM2UxYzZjMDRhNCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.SlPBFnHCM2eIILZa-phUv_z4hYoLpNFu8JcDzpW1L3Q",
+      "TintaFinal-Round1.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjQzYjA1YzZhLTczMDYtNDk5Zi1hYzdlLTJmZWIwZDRhZGM4NCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.ajmCOWYnVPWOjTE4qXhSsv3caTMqJJEN3Uj8r_-fjo0",
+      "TintaFinal-Round2.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjI3YjhlNTcxLWI2MmQtNGRjOS04NzFjLWY0MjA3N2I5ZTNkNCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.WVQOqDUtNPg7ZEpQbQcqTQEftlC_YhXXt_z5y0xaSDU",
+      "TintaFinal-Shop.png": "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjAyYjZhMGY3LTNkMDItNDFhNy1hYTU1LTEwOGY5MmM2NmI0NyIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.RAr1ZegYmbwwCsUwqYm439Vgtmlw8EFauq9BaNISHaA"
+    }
+  },
+  "status": {
+    "uploadStatus": 2,
+    "uploadThumbnailStatusDict": {
+      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6Ijc4NzJmNzUyLTVkNWItNDE5YS1hNGEzLTkzZTFkZjYyY2VjMiIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.Mage8VXvWIJLUVJiYaX6CHhz-1baGZM7rmct0gZ6jCo": {
+        "homepageThumbnailId": "ba795341-cce3-45c2-b4a1-9c7b9145b6b9",
+        "assetId": 114101650142971,
+        "moderationStatus": "Approved"
+      },
+      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjI2MmMxNDJmLWE4N2ItNDgxMC04ZWQ3LTIzM2UxYzZjMDRhNCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.SlPBFnHCM2eIILZa-phUv_z4hYoLpNFu8JcDzpW1L3Q": {
+        "homepageThumbnailId": "9790e7dc-edd6-4709-8c48-8d198b8d27d5",
+        "assetId": 140551471838932,
+        "moderationStatus": "Approved"
+      },
+      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjQzYjA1YzZhLTczMDYtNDk5Zi1hYzdlLTJmZWIwZDRhZGM4NCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.ajmCOWYnVPWOjTE4qXhSsv3caTMqJJEN3Uj8r_-fjo0": {
+        "homepageThumbnailId": "b6d3e7f5-99b3-44ff-815a-8ac8563d2f1b",
+        "assetId": 133696074286837,
+        "moderationStatus": "Approved"
+      },
+      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjI3YjhlNTcxLWI2MmQtNGRjOS04NzFjLWY0MjA3N2I5ZTNkNCIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.WVQOqDUtNPg7ZEpQbQcqTQEftlC_YhXXt_z5y0xaSDU": {
+        "homepageThumbnailId": "4841b13d-ffc3-4d1d-baf8-ab29fb146125",
+        "assetId": 111188052722145,
+        "moderationStatus": "Approved"
+      },
+      "tp1.eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJvcGVyYXRpb25JZCI6IjAyYjZhMGY3LTNkMDItNDFhNy1hYTU1LTEwOGY5MmM2NmI0NyIsInVuaXZlcnNlSWQiOjg5NzMyNzE2OTl9.RAr1ZegYmbwwCsUwqYm439Vgtmlw8EFauq9BaNISHaA": {
+        "homepageThumbnailId": "3075c1f1-79a3-442f-a24c-8a3bc0d37c83",
+        "assetId": 88506767207137,
+        "moderationStatus": "Approved"
+      }
+    }
+  }
+}
