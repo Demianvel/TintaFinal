@@ -11,7 +11,7 @@ local EconomyService = require(Services:WaitForChild("EconomyService"))
 local RankingService = require(Services:WaitForChild("RankingService"))
 local MonetizationService = require(Services:WaitForChild("MonetizationService"))
 local CharacterStyleService = require(Services:WaitForChild("CharacterStyleService"))
-local ShooterGameService = require(Services:WaitForChild("ShooterGameService"))
+local PvPGameService = require(Services:WaitForChild("PvPGameService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 
 local remotes = ReplicatedStorage:FindFirstChild("Remotes") or Instance.new("Folder")
@@ -29,17 +29,16 @@ local function ensureRemote(className, name)
 end
 
 local GetSnapshot = ensureRemote("RemoteFunction", "GetSnapshot")
-local CastVote = ensureRemote("RemoteFunction", "CastVote")
+local CastVote = ensureRemote("RemoteFunction", "CastVote") -- compatibilidad: siempre deshabilitado
 local ShopPurchase = ensureRemote("RemoteFunction", "ShopPurchase")
 local Spin = ensureRemote("RemoteFunction", "Spin")
 local BuyPremiumWithTintaMoney = ensureRemote("RemoteFunction", "BuyPremiumWithTintaMoney")
-local BuyPremiumWithWon = ensureRemote("RemoteFunction", "BuyPremiumWithWon") -- compatibilidad
+local BuyPremiumWithWon = ensureRemote("RemoteFunction", "BuyPremiumWithWon")
 local ToggleAFK = ensureRemote("RemoteFunction", "ToggleAFK")
 local ClaimBattlePass = ensureRemote("RemoteFunction", "ClaimBattlePass")
 local SelectWeapon = ensureRemote("RemoteFunction", "SelectWeapon")
 local SelectSkin = ensureRemote("RemoteFunction", "SelectSkin")
 local GetLeaderboards = ensureRemote("RemoteFunction", "GetLeaderboards")
--- Compatibilidad con la interfaz anterior durante la migración.
 local QueueGuard = ensureRemote("RemoteFunction", "QueueGuard")
 local SelectDifficulty = ensureRemote("RemoteFunction", "SelectDifficulty")
 
@@ -63,7 +62,7 @@ end
 local function snapshot(player)
     return {
         Profile = ProfileService.Public(player),
-        Game = ShooterGameService.GetState(),
+        Game = PvPGameService.GetState(),
         Config = {
             GameName = Config.GameName,
             UniverseId = Config.UniverseId,
@@ -77,11 +76,20 @@ local function snapshot(player)
                 MaxTier = Config.BattlePass.MaxTier,
                 XPPerTier = Config.BattlePass.XPPerTier,
                 PremiumGamePassId = Config.BattlePass.PremiumGamePassId,
+                FreeRewards = Config.BattlePass.FreeRewards,
+                PremiumRewards = Config.BattlePass.PremiumRewards,
             },
             Spin = Config.Spin,
             Shop = Config.Shop,
             ShopOrder = Config.ShopOrder,
             Weapons = Weapons,
+            PvP = {
+                BotsEnabled = false,
+                VotingEnabled = false,
+                MapRotation = "Automatic",
+                MinimumPlayers = 2,
+                MaxPlayers = Config.Match.MaxParticipants,
+            },
             Monetization = {
                 ProductOrder = MonetizationConfig.ProductOrder,
                 Products = MonetizationService.PublicCatalog(),
@@ -104,9 +112,8 @@ local function syncPremiumOwnership(player)
 end
 
 GetSnapshot.OnServerInvoke = function(player) return snapshot(player) end
-CastVote.OnServerInvoke = function(player, mapId)
-    if not allow(player, "Vote", 0.15) then return false, "Esperá un momento." end
-    return ShooterGameService.CastVote(player, tostring(mapId))
+CastVote.OnServerInvoke = function()
+    return false, "Sin votación: Tinta Final usa rotación automática de mapas."
 end
 ShopPurchase.OnServerInvoke = function(player, itemId)
     if not allow(player, "Shop", 0.35) then return false, "Esperá un momento." end
@@ -130,7 +137,7 @@ BuyPremiumWithTintaMoney.OnServerInvoke = buyPremium
 BuyPremiumWithWon.OnServerInvoke = buyPremium
 ToggleAFK.OnServerInvoke = function(player)
     if not allow(player, "AFK", 0.8) then return false, "Esperá un momento." end
-    return ShooterGameService.ToggleAFK(player)
+    return PvPGameService.ToggleAFK(player)
 end
 ClaimBattlePass.OnServerInvoke = function(player, tier, premium)
     local success, message = EconomyService.ClaimBattlePassReward(player, tier, premium == true)
@@ -152,13 +159,13 @@ SelectSkin.OnServerInvoke = function(player, skinId)
     return true, "Aspecto equipado.", ProfileService.Public(player)
 end
 GetLeaderboards.OnServerInvoke = function(player, board, limit)
-    if not allow(player, "Leaderboard", 1.0) then return nil, "Esperá un momento." end
+    if not allow(player, "Leaderboard", 0.35) then return nil, "Esperá un momento." end
     limit = math.clamp(math.floor(tonumber(limit) or 15), 1, 25)
     if board == "All" or board == nil then return RankingService.GetBundle(limit) end
     return RankingService.GetLeaderboard(tostring(board), limit)
 end
-QueueGuard.OnServerInvoke = function() return false, "El modo guardia fue reemplazado por Competitive Arena." end
-SelectDifficulty.OnServerInvoke = function() return false, "Las dificultades fueron reemplazadas por modos competitivos." end
+QueueGuard.OnServerInvoke = function() return false, "Tinta Final ahora es PvP competitivo." end
+SelectDifficulty.OnServerInvoke = function() return false, "No hay modo survival ni bots: solo PvP entre jugadores." end
 
 local function setupPlayer(player)
     if ProfileService.Get(player) then return end
@@ -169,8 +176,8 @@ local function setupPlayer(player)
     player:SetAttribute("AFKMode", false)
     player:SetAttribute("ShooterActive", false)
     player:SetAttribute("TintaQueueTime", workspace:GetServerTimeNow())
-    player.CharacterAdded:Connect(function(character) ShooterGameService.OnCharacterAdded(player, character) end)
-    if player.Character then task.spawn(ShooterGameService.OnCharacterAdded, player, player.Character) end
+    player.CharacterAdded:Connect(function(character) PvPGameService.OnCharacterAdded(player, character) end)
+    if player.Character then task.spawn(PvPGameService.OnCharacterAdded, player, player.Character) end
     pushProfile(player)
     task.spawn(RankingService.RecordPlayer, player)
 end
@@ -182,10 +189,10 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
 end)
 
 MonetizationService.Bind()
-ShooterGameService.Initialize(remotes)
+PvPGameService.Initialize(remotes)
 Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(function(player)
-    ShooterGameService.PlayerRemoving(player)
+    PvPGameService.PlayerRemoving(player)
     RankingService.RecordPlayer(player)
     ProfileService.Save(player)
     ProfileService.Remove(player)
@@ -194,7 +201,7 @@ end)
 for _, player in ipairs(Players:GetPlayers()) do task.spawn(setupPlayer, player) end
 
 ProfileService.StartAutosave()
-ShooterGameService.StartLoop()
+PvPGameService.StartLoop()
 
 game:BindToClose(function()
     for _, player in ipairs(Players:GetPlayers()) do
