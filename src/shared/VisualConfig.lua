@@ -1,6 +1,6 @@
 -- Tinta Final visual identity.
 -- Asset IDs are populated by .github/workflows/upload-brand-assets.yml.
--- Deployment trigger: ROBLOX_API_KEY refreshed 2026-08-06 18:49 ART.
+-- Production sync trigger: assets + Developer Products + serverSize confirmed 2026-08-06.
 local VisualConfig = {
     Palette = {
         Background = Color3.fromRGB(7, 7, 15),
