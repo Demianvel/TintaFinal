@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Weapons = require(ReplicatedStorage.Shared.WeaponDefinitions)
 local ProfileService = require(script.Parent.ProfileService)
 
 local CharacterStyleService = {}
@@ -45,6 +46,39 @@ local function teamAccent(player, profile)
     return ORANGE
 end
 
+local function weaponDimensions(weaponId)
+    local definition = Weapons[weaponId] or Weapons.InkRifle
+    if definition.Class == "Sniper" then return 3.9, 0.42, 0.55 end
+    if definition.Class == "LMG" then return 3.35, 0.72, 0.72 end
+    if definition.Class == "Shotgun" then return 3.1, 0.55, 0.64 end
+    if definition.Class == "Pistol" then return 1.7, 0.38, 0.52 end
+    if definition.Class == "SMG" then return 2.35, 0.5, 0.58 end
+    return 2.95, 0.48, 0.60
+end
+
+local function attachWeapon(folder, player, character, profile)
+    local hand = character:FindFirstChild("RightHand") or character:FindFirstChild("Right Arm") or character:FindFirstChild("RightLowerArm")
+    if not hand then return end
+    local weaponId = profile and profile.SelectedWeapon or "InkRifle"
+    local definition = Weapons[weaponId] or Weapons.InkRifle
+    local accent = definition.Accent or teamAccent(player, profile)
+    local length, height, width = weaponDimensions(weaponId)
+    local baseOffset = CFrame.new(0.08, -0.42, -(0.55 + length * 0.28)) * CFrame.Angles(math.rad(-7), 0, 0)
+
+    weldTo(folder, hand, "WeaponReceiver_" .. weaponId, Vector3.new(width, height, length * 0.58), baseOffset, DARK, Enum.Material.Metal)
+    weldTo(folder, hand, "WeaponBarrel_" .. weaponId, Vector3.new(width * 0.42, height * 0.42, length * 0.55), baseOffset * CFrame.new(0, 0.02, -length * 0.46), accent, Enum.Material.Neon)
+    weldTo(folder, hand, "WeaponCore_" .. weaponId, Vector3.new(width * 0.62, height * 0.22, length * 0.28), baseOffset * CFrame.new(0, height * 0.62, -length * 0.05), accent, Enum.Material.Neon)
+    weldTo(folder, hand, "WeaponGrip_" .. weaponId, Vector3.new(width * 0.48, 0.75, 0.38), baseOffset * CFrame.new(0, -0.55, length * 0.12) * CFrame.Angles(math.rad(-16), 0, 0), DARK, Enum.Material.Metal)
+
+    if definition.Class == "Sniper" then
+        weldTo(folder, hand, "WeaponScope_" .. weaponId, Vector3.new(0.44, 0.44, 1.0), baseOffset * CFrame.new(0, 0.55, 0.15), accent, Enum.Material.Neon)
+    elseif definition.Class == "LMG" then
+        weldTo(folder, hand, "WeaponMagazine_" .. weaponId, Vector3.new(0.72, 0.95, 0.72), baseOffset * CFrame.new(0, -0.62, -0.2), ORANGE, Enum.Material.Metal)
+    elseif definition.Class == "Shotgun" then
+        weldTo(folder, hand, "WeaponPump_" .. weaponId, Vector3.new(width * 0.9, height * 0.85, 0.85), baseOffset * CFrame.new(0, -0.05, -0.78), accent, Enum.Material.SmoothPlastic)
+    end
+end
+
 function CharacterStyleService.Apply(player, character)
     if not character or not character.Parent then return end
     local previous = character:FindFirstChild("TintaCompetitiveStyle")
@@ -79,10 +113,10 @@ function CharacterStyleService.Apply(player, character)
         weldTo(folder, head, "CapPlate", Vector3.new(1.6, 0.18, 1.5), CFrame.new(0, 0.63, 0), DARK, Enum.Material.Metal)
     end
 
+    attachWeapon(folder, player, character, profile)
+
     for _, object in ipairs(folder:GetDescendants()) do
-        if object:IsA("BasePart") then
-            object:SetAttribute("TintaCosmetic", true)
-        end
+        if object:IsA("BasePart") then object:SetAttribute("TintaCosmetic", true) end
     end
 end
 
