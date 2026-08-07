@@ -1,29 +1,10 @@
+Configuración actual: {"path": "universes/8973271699/places/73618099851560", "createTime": "2025-10-18T12:07:45.233Z", "updateTime": "2026-08-07T01:17:21.833719700Z", "displayName": "TINTA FINAL", "description": "", "serverSize": 50, "root": true, "universeRuntimeCreation": false, "templatePlace": ""}
 Traceback (most recent call last):
   File "/home/runner/work/TintaFinal/TintaFinal/scripts/configure_place.py", line 80, in <module>
     main()
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/configure_place.py", line 66, in main
-    before = get_place()
-             ^^^^^^^^^^^
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/configure_place.py", line 33, in get_place
-    response = requests.get(URL, headers=headers(), timeout=60)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 73, in get
-    return request("get", url, params=params, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 59, in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 575, in request
-    prep = self.prepare_request(req)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 484, in prepare_request
-    p.prepare(
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 368, in prepare
-    self.prepare_headers(headers)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 490, in prepare_headers
-    check_header_validity(header)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1032, in check_header_validity
-    _validate_header_part(header, value, 1)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1048, in _validate_header_part
-    raise InvalidHeader(
-requests.exceptions.InvalidHeader: Invalid leading whitespace, reserved character(s), or return character(s) in header value: 'universe.place:write\n\ndeveloper-product:read\ndeveloper-product:write\n\nasset:read\nasset:write'
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/configure_place.py", line 69, in main
+    updated = update_server_size()
+              ^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/configure_place.py", line 48, in update_server_size
+    raise RuntimeError(f"PATCH Place falló: HTTP {response.status_code} - {response.text[:1500]}")
+RuntimeError: PATCH Place falló: HTTP 403 - { "code": "PERMISSION_DENIED", "message": "The required scope \u003cuniverse.place:write\u003e is missing." }
