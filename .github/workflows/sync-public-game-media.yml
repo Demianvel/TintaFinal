@@ -18,7 +18,7 @@ permissions:
 
 jobs:
   media:
-    name: Reemplazar portada pública vieja
+    name: Sincronizar portada pública de Tinta Final
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -89,14 +89,23 @@ jobs:
             git push origin HEAD:main
           fi
 
-      - name: Confirmar portada
+      - name: Evaluar resultado de portada
         if: always()
         shell: bash
         run: |
-          if [ "${{ steps.media.outputs.exit_code }}" != "0" ]; then
-            echo "Falló la sincronización de la portada pública."
-            cat automation/PUBLIC_MEDIA_STATUS.md || true
-            exit 1
+          code="${{ steps.media.outputs.exit_code }}"
+          if [ "$code" = "0" ]; then
+            grep -q 'Estado: CORRECTO' automation/PUBLIC_MEDIA_STATUS.md
+            echo "Portada pública de Tinta Final confirmada."
+            exit 0
           fi
-          grep -q 'Estado: CORRECTO' automation/PUBLIC_MEDIA_STATUS.md
-          echo "Portada pública de Tinta Final confirmada."
+
+          if [ "$code" = "2" ]; then
+            echo "::warning title=Portada pública bloqueada por permisos::La publicación del juego continúa. Revisá el scope legacy-universe:manage de ROBLOX_API_KEY."
+            cat automation/PUBLIC_MEDIA_STATUS.md || true
+            exit 0
+          fi
+
+          echo "Falló la sincronización de portada por un error técnico real."
+          cat automation/PUBLIC_MEDIA_STATUS.md || true
+          exit 1
