@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""Upload Tinta Final artwork as real Roblox universe thumbnails and keep the sync idempotent."""
+"""Upload Tinta Final artwork as real Roblox universe thumbnails and keep the sync idempotent.
+
+Also records the public media inventory so stale legacy thumbnails can be identified
+and removed deliberately instead of deleting unknown media blindly.
+"""
 
 from __future__ import annotations
 
@@ -14,6 +18,7 @@ import requests
 
 UNIVERSE_ID = 8973271699
 API_ROOT = f"https://apis.roblox.com/thumbnail-personalization-api/v1/universes/{UNIVERSE_ID}"
+PUBLIC_MEDIA_URL = f"https://games.roblox.com/v2/games/{UNIVERSE_ID}/media"
 OUTPUT_DIR = Path("build/universe-thumbnails")
 RESULT_FILE = Path("automation/universe-thumbnails.json")
 STATUS_FILE = Path("automation/UNIVERSE_THUMBNAILS_STATUS.md")
@@ -48,13 +53,21 @@ def headers() -> dict[str, str]:
     return {"x-api-key": api_key(), "Accept": "application/json"}
 
 
-def cached_approved_count() -> int:
+def load_cached_payload() -> dict:
     if not RESULT_FILE.is_file():
-        return 0
+        return {}
     try:
         payload = json.loads(RESULT_FILE.read_text(encoding="utf-8"))
-        status_map = payload.get("status", {}).get("uploadThumbnailStatusDict", {})
+        return payload if isinstance(payload, dict) else {}
     except (OSError, json.JSONDecodeError, AttributeError):
+        return {}
+
+
+def cached_approved_count(payload: dict | None = None) -> int:
+    payload = payload or load_cached_payload()
+    try:
+        status_map = payload.get("status", {}).get("uploadThumbnailStatusDict", {})
+    except AttributeError:
         return 0
 
     approved_ids: set[str] = set()
@@ -67,6 +80,47 @@ def cached_approved_count() -> int:
         if thumbnail_id and asset_id > 0 and moderation.lower() == "approved":
             approved_ids.add(thumbnail_id)
     return len(approved_ids)
+
+
+def get_personalized_inventory() -> dict:
+    response = requests.get(f"{API_ROOT}/thumbnails", headers=headers(), timeout=60)
+    if not response.ok:
+        raise RuntimeError(
+            f"No se pudo leer el inventario de miniaturas personalizadas: "
+            f"HTTP {response.status_code} - {response.text[:1800]}"
+        )
+    try:
+        return response.json()
+    except ValueError:
+        return {"raw": response.text[:5000]}
+
+
+def get_public_media() -> dict:
+    # Endpoint público usado por la ficha de la experiencia. Incluye media legacy que
+    # puede seguir apareciendo aunque las Home thumbnails personalizadas estén bien.
+    response = requests.get(
+        PUBLIC_MEDIA_URL,
+        params={"fetchAllExperienceRelatedMedia": "true"},
+        headers={"Accept": "application/json"},
+        timeout=60,
+    )
+    if not response.ok:
+        return {
+            "error": f"HTTP {response.status_code}",
+            "body": response.text[:3000],
+        }
+    try:
+        return response.json()
+    except ValueError:
+        return {"raw": response.text[:5000]}
+
+
+def save_inventory(payload: dict) -> dict:
+    payload["personalizedInventory"] = get_personalized_inventory()
+    payload["publicMedia"] = get_public_media()
+    RESULT_FILE.parent.mkdir(parents=True, exist_ok=True)
+    RESULT_FILE.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return payload
 
 
 def cleanup_known_duplicates() -> int:
@@ -86,8 +140,6 @@ def cleanup_known_duplicates() -> int:
         if response.status_code in (400, 404) or (
             response.status_code == 403 and "invalid thumbnail id" in response_text
         ):
-            # Roblox responde 403 "invalid thumbnail id" si intentamos volver a borrar
-            # una miniatura que ya fue retirada. No se ignoran otros 403 de permisos.
             print(f"Duplicado ya ausente: {thumbnail_id}")
             continue
         raise RuntimeError(
@@ -97,13 +149,21 @@ def cleanup_known_duplicates() -> int:
     return deleted
 
 
-def write_status(active_count: int, deleted_count: int, mode: str) -> None:
+def public_media_count(payload: dict) -> int:
+    public = payload.get("publicMedia") or {}
+    data = public.get("data") if isinstance(public, dict) else None
+    return len(data) if isinstance(data, list) else 0
+
+
+def write_status(active_count: int, deleted_count: int, mode: str, payload: dict | None = None) -> None:
+    payload = payload or {}
     STATUS_FILE.parent.mkdir(parents=True, exist_ok=True)
     STATUS_FILE.write_text(
         "# Miniaturas del universo Tinta Final\n\n"
         "- Estado: CORRECTO\n"
         f"- Universe ID: {UNIVERSE_ID}\n"
         f"- Miniaturas activas/reutilizadas: {active_count}\n"
+        f"- Media pública detectada: {public_media_count(payload)}\n"
         f"- Duplicados eliminados en esta ejecución: {deleted_count}\n"
         f"- Modo: {mode}\n",
         encoding="utf-8",
@@ -187,26 +247,29 @@ def poll(upload_payload: dict) -> dict:
 
 def main() -> None:
     deleted = cleanup_known_duplicates()
+    cached_payload = load_cached_payload()
+    cached_count = cached_approved_count(cached_payload)
 
-    # Si el último set de cinco ya fue procesado y aprobado, lo reutilizamos.
-    # Esto evita que cada push vuelva a cargar copias idénticas.
-    cached_count = cached_approved_count()
     if cached_count == len(THUMBNAILS):
-        write_status(cached_count, deleted, "REUTILIZADO_SIN_DUPLICAR")
+        payload = save_inventory(cached_payload)
+        write_status(cached_count, deleted, "REUTILIZADO_AUDITADO", payload)
         print(f"Set aprobado existente reutilizado: {cached_count} miniaturas.")
+        print(json.dumps({
+            "personalizedInventory": payload.get("personalizedInventory"),
+            "publicMedia": payload.get("publicMedia"),
+        }, indent=2, ensure_ascii=False))
         return
 
     rendered = render_all()
     upload_payload = upload(rendered)
     status_payload = poll(upload_payload)
 
-    RESULT_FILE.parent.mkdir(parents=True, exist_ok=True)
     result = {
         "universeId": UNIVERSE_ID,
         "upload": upload_payload,
         "status": status_payload,
     }
-    RESULT_FILE.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    result = save_inventory(result)
 
     status_map = status_payload.get("uploadThumbnailStatusDict") or {}
     active_count = sum(
@@ -219,7 +282,7 @@ def main() -> None:
     )
     if active_count != len(THUMBNAILS):
         raise RuntimeError(f"Se esperaban {len(THUMBNAILS)} miniaturas aprobadas y hay {active_count}.")
-    write_status(active_count, deleted, "NUEVO_SET_APROBADO")
+    write_status(active_count, deleted, "NUEVO_SET_APROBADO_AUDITADO", result)
     print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
