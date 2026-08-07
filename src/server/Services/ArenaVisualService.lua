@@ -140,7 +140,7 @@ function ArenaVisualService.DecorateLobby()
         puddle(decoration, offset, 3 + (index % 4) * 1.2, color, angle)
     end
 
-    banner(decoration, Vector3.new(0, 17, -93), "TINTA FINAL · PVP", Color3.new(1, 1, 1), 58)
+    banner(decoration, Vector3.new(0, 17, -93), "TINTA FINAL · DUELOS", Color3.new(1, 1, 1), 58)
     banner(decoration, Vector3.new(-92, 12, -70), "ARSENAL", CYAN, 28)
     banner(decoration, Vector3.new(92, 12, -70), "TIENDA", ORANGE, 28)
 
@@ -167,6 +167,7 @@ function ArenaVisualService.Decorate(arenaData, mode)
     decoration.Name = "CompetitiveInkDecoration"
     decoration.Parent = arenaFolder
     local origin = arenaData.Origin
+    local duelSize = mode == "Duel" and tonumber(workspace:GetAttribute("TintaFinalDuelSize")) or nil
 
     for index = 1, 24 do
         local angle = (index * 137) % 360
@@ -181,8 +182,16 @@ function ArenaVisualService.Decorate(arenaData, mode)
     lane(decoration, origin + Vector3.new(0, 0.10, 72), 95, 3.5, ORANGE, 90)
 
     banner(decoration, origin + Vector3.new(-78, 17, -135), "EQUIPO CIAN", CYAN)
-    banner(decoration, origin + Vector3.new(78, 17, -135), mode == "TeamSplash" and "EQUIPO MAGENTA" or "RIVALES", MAGENTA)
-    banner(decoration, origin + Vector3.new(0, 29, 125), mode == "FreeSplash" and "TODOS CONTRA TODOS" or "TINTA FINAL · 10 VS 10", ORANGE, 54)
+    banner(decoration, origin + Vector3.new(78, 17, -135), (mode == "TeamSplash" or mode == "Duel") and "EQUIPO MAGENTA" or "RIVALES", MAGENTA)
+    local centerText
+    if duelSize then
+        centerText = string.format("TINTA FINAL · %d VS %d", duelSize, duelSize)
+    elseif mode == "FreeSplash" then
+        centerText = "TODOS CONTRA TODOS"
+    else
+        centerText = "TINTA FINAL · 10 VS 10"
+    end
+    banner(decoration, origin + Vector3.new(0, 29, 125), centerText, ORANGE, 54)
     banner(decoration, origin + Vector3.new(-142, 13, 0), "ZONA B", CYAN, 24)
     banner(decoration, origin + Vector3.new(142, 13, 0), "ZONA A", ORANGE, 24)
 
