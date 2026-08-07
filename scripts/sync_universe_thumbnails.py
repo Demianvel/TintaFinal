@@ -78,12 +78,16 @@ def cleanup_known_duplicates() -> int:
             params=[("homepageThumbnailIds", thumbnail_id)],
             timeout=60,
         )
+        response_text = response.text.lower()
         if response.status_code in (200, 204):
             deleted += 1
             print(f"Duplicado eliminado: {thumbnail_id}")
             continue
-        if response.status_code in (400, 404):
-            # Ya no existe o Roblox ya lo retiró; el objetivo de limpieza está cumplido.
+        if response.status_code in (400, 404) or (
+            response.status_code == 403 and "invalid thumbnail id" in response_text
+        ):
+            # Roblox responde 403 "invalid thumbnail id" si intentamos volver a borrar
+            # una miniatura que ya fue retirada. No se ignoran otros 403 de permisos.
             print(f"Duplicado ya ausente: {thumbnail_id}")
             continue
         raise RuntimeError(
