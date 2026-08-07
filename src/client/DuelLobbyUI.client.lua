@@ -55,19 +55,13 @@ local function makeWorldVisible()
     if not existing then return end
     local root = existing:FindFirstChild("LobbyRoot", true)
     if not root then return end
+
     root.BackgroundTransparency = 1
-    local art = root:FindFirstChild("LobbyArt", true)
-    if art then art.Visible = false end
+    -- El lobby nuevo es físico/3D. Ocultamos toda la interfaz antigua de menú para no tapar
+    -- las parcelas ni interceptar los controles de movimiento.
     for _, child in ipairs(root:GetChildren()) do
-        if child:IsA("Frame") and child ~= root and child.Size == UDim2.fromScale(1, 1) then
+        if child:IsA("GuiObject") then
             child.Visible = false
-        end
-    end
-    -- La cola automática anterior ya no se usa: los duelos se eligen caminando a las parcelas.
-    for _, descendant in ipairs(root:GetDescendants()) do
-        if descendant:IsA("TextButton") then
-            local text = string.upper(tostring(descendant.Text or ""))
-            if string.find(text, "JUGAR", 1, true) then descendant.Visible = false end
         end
     end
 end
@@ -102,4 +96,4 @@ task.spawn(function()
     makeWorldVisible()
 end)
 
-print("[TintaFinal] Lobby físico de duelos visible y guía de parcelas activa.")
+print("[TintaFinal] Lobby físico 3D limpio: parcelas de duelo visibles sin menú antiguo.")
