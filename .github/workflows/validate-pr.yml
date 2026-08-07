@@ -6,8 +6,9 @@ on:
     paths:
       - "src/**"
       - "assets/branding/**"
+      - "scripts/**"
       - "default.project.json"
-      - ".github/workflows/validate-pr.yml"
+      - ".github/workflows/**"
 
 permissions:
   contents: read
