@@ -4,9 +4,13 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local Config = require(ReplicatedStorage.Shared.GameConfig)
 local Weapons = require(ReplicatedStorage.Shared.WeaponDefinitions)
+local MonetizationConfig = require(ReplicatedStorage.Shared.MonetizationConfig)
 local Services = script.Parent:WaitForChild("Services")
 local ProfileService = require(Services:WaitForChild("ProfileService"))
 local EconomyService = require(Services:WaitForChild("EconomyService"))
+local RankingService = require(Services:WaitForChild("RankingService"))
+local MonetizationService = require(Services:WaitForChild("MonetizationService"))
+local CharacterStyleService = require(Services:WaitForChild("CharacterStyleService"))
 local ShooterGameService = require(Services:WaitForChild("ShooterGameService"))
 local WeaponService = require(Services:WaitForChild("WeaponService"))
 
@@ -28,15 +32,21 @@ local GetSnapshot = ensureRemote("RemoteFunction", "GetSnapshot")
 local CastVote = ensureRemote("RemoteFunction", "CastVote")
 local ShopPurchase = ensureRemote("RemoteFunction", "ShopPurchase")
 local Spin = ensureRemote("RemoteFunction", "Spin")
-local BuyPremiumWithWon = ensureRemote("RemoteFunction", "BuyPremiumWithWon")
+local BuyPremiumWithTintaMoney = ensureRemote("RemoteFunction", "BuyPremiumWithTintaMoney")
+local BuyPremiumWithWon = ensureRemote("RemoteFunction", "BuyPremiumWithWon") -- compatibilidad
 local ToggleAFK = ensureRemote("RemoteFunction", "ToggleAFK")
 local ClaimBattlePass = ensureRemote("RemoteFunction", "ClaimBattlePass")
 local SelectWeapon = ensureRemote("RemoteFunction", "SelectWeapon")
+local SelectSkin = ensureRemote("RemoteFunction", "SelectSkin")
+local GetLeaderboards = ensureRemote("RemoteFunction", "GetLeaderboards")
 -- Compatibilidad con la interfaz anterior durante la migración.
 local QueueGuard = ensureRemote("RemoteFunction", "QueueGuard")
 local SelectDifficulty = ensureRemote("RemoteFunction", "SelectDifficulty")
 
-for _, name in ipairs({ "GameState", "ProfileState", "Victory", "Eliminated", "StageReward", "AFKReward", "AmmoState", "HitConfirm", "KillFeed", "ShotFX", "FireWeapon", "ReloadWeapon" }) do
+for _, name in ipairs({
+    "GameState", "ProfileState", "Victory", "Eliminated", "StageReward", "AFKReward",
+    "AmmoState", "HitConfirm", "KillFeed", "ShotFX", "FireWeapon", "ReloadWeapon",
+}) do
     ensureRemote("RemoteEvent", name)
 end
 
@@ -56,8 +66,11 @@ local function snapshot(player)
         Game = ShooterGameService.GetState(),
         Config = {
             GameName = Config.GameName,
+            UniverseId = Config.UniverseId,
+            PlaceId = Config.PlaceId,
             ExpectedMaxPlayers = Config.ExpectedMaxPlayers,
             Economy = Config.Economy,
+            Competitive = Config.Competitive,
             Shooter = Config.Shooter,
             Match = Config.Match,
             BattlePass = {
@@ -69,6 +82,10 @@ local function snapshot(player)
             Shop = Config.Shop,
             ShopOrder = Config.ShopOrder,
             Weapons = Weapons,
+            Monetization = {
+                ProductOrder = MonetizationConfig.ProductOrder,
+                Products = MonetizationService.PublicCatalog(),
+            },
         },
     }
 end
@@ -92,7 +109,7 @@ CastVote.OnServerInvoke = function(player, mapId)
     return ShooterGameService.CastVote(player, tostring(mapId))
 end
 ShopPurchase.OnServerInvoke = function(player, itemId)
-    if not allow(player, "Shop", 0.4) then return false, "Esperá un momento." end
+    if not allow(player, "Shop", 0.35) then return false, "Esperá un momento." end
     local success, message = EconomyService.PurchaseShopItem(player, tostring(itemId))
     pushProfile(player)
     return success, message, ProfileService.Public(player)
@@ -103,11 +120,14 @@ Spin.OnServerInvoke = function(player)
     pushProfile(player)
     return success, message, result, ProfileService.Public(player)
 end
-BuyPremiumWithWon.OnServerInvoke = function(player)
-    local success, message = EconomyService.BuyPremiumPassWithWon(player)
+local function buyPremium(player)
+    if not allow(player, "Premium", 0.8) then return false, "Esperá un momento." end
+    local success, message = EconomyService.BuyPremiumPassWithTintaMoney(player)
     pushProfile(player)
     return success, message, ProfileService.Public(player)
 end
+BuyPremiumWithTintaMoney.OnServerInvoke = buyPremium
+BuyPremiumWithWon.OnServerInvoke = buyPremium
 ToggleAFK.OnServerInvoke = function(player)
     if not allow(player, "AFK", 0.8) then return false, "Esperá un momento." end
     return ShooterGameService.ToggleAFK(player)
@@ -118,13 +138,27 @@ ClaimBattlePass.OnServerInvoke = function(player, tier, premium)
     return success, message, ProfileService.Public(player)
 end
 SelectWeapon.OnServerInvoke = function(player, weaponId)
-    if not allow(player, "Weapon", 0.25) then return false, "Esperá un momento." end
+    if not allow(player, "Weapon", 0.2) then return false, "Esperá un momento." end
     local success, message, profile = WeaponService.SelectWeapon(player, tostring(weaponId))
     if success then pushProfile(player) end
     return success, message, profile
 end
-QueueGuard.OnServerInvoke = function() return false, "El modo guardia fue reemplazado por Arena Shooter." end
-SelectDifficulty.OnServerInvoke = function() return false, "Las dificultades fueron reemplazadas por modos shooter." end
+SelectSkin.OnServerInvoke = function(player, skinId)
+    if not allow(player, "Skin", 0.25) then return false, "Esperá un momento." end
+    local success = ProfileService.SetSelectedSkin(player, tostring(skinId))
+    if not success then return false, "Primero desbloqueá ese aspecto.", ProfileService.Public(player) end
+    if player.Character then CharacterStyleService.Apply(player, player.Character) end
+    pushProfile(player)
+    return true, "Aspecto equipado.", ProfileService.Public(player)
+end
+GetLeaderboards.OnServerInvoke = function(player, board, limit)
+    if not allow(player, "Leaderboard", 1.0) then return nil, "Esperá un momento." end
+    limit = math.clamp(math.floor(tonumber(limit) or 15), 1, 25)
+    if board == "All" or board == nil then return RankingService.GetBundle(limit) end
+    return RankingService.GetLeaderboard(tostring(board), limit)
+end
+QueueGuard.OnServerInvoke = function() return false, "El modo guardia fue reemplazado por Competitive Arena." end
+SelectDifficulty.OnServerInvoke = function() return false, "Las dificultades fueron reemplazadas por modos competitivos." end
 
 local function setupPlayer(player)
     if ProfileService.Get(player) then return end
@@ -134,9 +168,11 @@ local function setupPlayer(player)
     player:SetAttribute("ShooterTeam", "Lobby")
     player:SetAttribute("AFKMode", false)
     player:SetAttribute("ShooterActive", false)
+    player:SetAttribute("TintaQueueTime", workspace:GetServerTimeNow())
     player.CharacterAdded:Connect(function(character) ShooterGameService.OnCharacterAdded(player, character) end)
     if player.Character then task.spawn(ShooterGameService.OnCharacterAdded, player, player.Character) end
     pushProfile(player)
+    task.spawn(RankingService.RecordPlayer, player)
 end
 
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
@@ -145,10 +181,12 @@ MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gameP
     if profile then profile.PremiumPass = true pushProfile(player) end
 end)
 
+MonetizationService.Bind()
 ShooterGameService.Initialize(remotes)
 Players.PlayerAdded:Connect(setupPlayer)
 Players.PlayerRemoving:Connect(function(player)
     ShooterGameService.PlayerRemoving(player)
+    RankingService.RecordPlayer(player)
     ProfileService.Save(player)
     ProfileService.Remove(player)
     requestTimes[player] = nil
@@ -159,6 +197,9 @@ ProfileService.StartAutosave()
 ShooterGameService.StartLoop()
 
 game:BindToClose(function()
-    for _, player in ipairs(Players:GetPlayers()) do ProfileService.Save(player) end
+    for _, player in ipairs(Players:GetPlayers()) do
+        RankingService.RecordPlayer(player)
+        ProfileService.Save(player)
+    end
     task.wait(2)
 end)
