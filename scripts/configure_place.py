@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Set the live Tinta Final Roblox place to 20 players per server and verify it."""
 
-# Trigger de configuración: 2026-08-06 scopes, Luau execution sessions y universe thumbnail habilitados.
+# Trigger de configuración: 2026-08-06 permisos universe + place read/write confirmados.
 from __future__ import annotations
 
 import json
