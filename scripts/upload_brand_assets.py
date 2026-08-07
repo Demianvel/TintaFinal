@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Render and upload all Tinta Final competitive brand images to Roblox Open Cloud."""
 
+# Trigger: 2026-08-06 permisos de assets, sesiones Luau y miniatura del universo habilitados.
 from __future__ import annotations
 
 import json
