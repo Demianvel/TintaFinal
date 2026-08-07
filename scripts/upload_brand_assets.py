@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Render and upload Tinta Final brand images to Roblox Open Cloud."""
+"""Render and upload all Tinta Final competitive brand images to Roblox Open Cloud."""
 
 from __future__ import annotations
 
@@ -21,6 +21,10 @@ CONFIG_FILE = Path("src/shared/VisualConfig.lua")
 ASSETS = {
     "MainMenu": Path("assets/branding/main.svg"),
     "Loading": Path("assets/branding/loading.svg"),
+    "Lobby": Path("assets/branding/lobby.svg"),
+    "Round1": Path("assets/branding/round1.svg"),
+    "Round2": Path("assets/branding/round2.svg"),
+    "Shop": Path("assets/branding/shop.svg"),
 }
 
 
@@ -71,8 +75,8 @@ def render_svg(source: Path, output: Path) -> None:
 def create_asset(api_key: str, creator_id: int, key: str, image_path: Path) -> str:
     request_data = {
         "assetType": "Decal",
-        "displayName": f"Tinta Final - {key}",
-        "description": "Identidad visual oficial de la experiencia Tinta Final.",
+        "displayName": f"Tinta Final Competitive - {key}",
+        "description": "Arte oficial de Tinta Final Competitive Arena.",
         "creationContext": {"creator": {"userId": creator_id}},
     }
 
@@ -123,15 +127,8 @@ def create_asset(api_key: str, creator_id: int, key: str, image_path: Path) -> s
 
 def update_visual_config(ids: dict[str, str]) -> None:
     content = CONFIG_FILE.read_text(encoding="utf-8")
-    replacements = {
-        "MainMenu": ids["MainMenu"],
-        "Loading": ids["Loading"],
-        "Lobby": ids["MainMenu"],
-        "Round1": ids["MainMenu"],
-        "Round2": ids["Loading"],
-        "Shop": ids["MainMenu"],
-        "Icon": ids["MainMenu"],
-    }
+    replacements = dict(ids)
+    replacements["Icon"] = ids["MainMenu"]
     for key, value in replacements.items():
         content, count = re.subn(
             rf"(\s*{re.escape(key)}\s*=\s*)\d+(,)",
@@ -152,9 +149,9 @@ def main() -> None:
 
     if RESULT_FILE.exists() and not force:
         cached = json.loads(RESULT_FILE.read_text(encoding="utf-8"))
-        if cached.get("MainMenu") and cached.get("Loading"):
-            print("Los assets ya fueron creados; se reutilizan los IDs guardados.")
-            update_visual_config({k: str(v) for k, v in cached.items()})
+        if all(str(cached.get(key, "")).isdigit() and int(cached[key]) > 0 for key in ASSETS):
+            print("Los assets competitivos ya existen; se reutilizan los IDs guardados.")
+            update_visual_config({key: str(cached[key]) for key in ASSETS})
             return
 
     asset_ids: dict[str, str] = {}
@@ -176,8 +173,7 @@ def main() -> None:
             },
             indent=2,
             ensure_ascii=False,
-        )
-        + "\n",
+        ) + "\n",
         encoding="utf-8",
     )
     update_visual_config(asset_ids)

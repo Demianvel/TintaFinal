@@ -1,0 +1,94 @@
+name: Sync Tinta Final developer products
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "src/shared/MonetizationConfig.lua"
+      - "scripts/sync_developer_products.py"
+      - ".github/workflows/sync-developer-products.yml"
+
+concurrency:
+  group: tintafinal-developer-products
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  products:
+    name: Crear y conectar productos Robux
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar cliente HTTP
+        run: python -m pip install --disable-pip-version-check requests==2.32.4
+
+      - name: Validar secreto Roblox
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          if [ -z "${ROBLOX_API_KEY:-}" ]; then
+            echo "Falta ROBLOX_API_KEY. Debe incluir developer-product:read y developer-product:write para este universo."
+            exit 1
+          fi
+
+      - name: Sincronizar developer products
+        id: sync
+        continue-on-error: true
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        shell: bash
+        run: |
+          set +e
+          mkdir -p automation
+          python scripts/sync_developer_products.py 2>&1 | tee automation/developer-products.log
+          code=${PIPESTATUS[0]}
+          echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+          if [ "$code" -ne 0 ]; then
+            printf '# Developer Products de Tinta Final\n\n- Estado: ERROR\n- Universe ID: 8973271699\n\n```text\n' > automation/DEVELOPER_PRODUCTS_STATUS.md
+            tail -n 100 automation/developer-products.log >> automation/DEVELOPER_PRODUCTS_STATUS.md
+            printf '\n```\n' >> automation/DEVELOPER_PRODUCTS_STATUS.md
+          fi
+          exit 0
+
+      - name: Guardar IDs y diagnóstico
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/shared/MonetizationConfig.lua automation/ || true
+          if git diff --cached --quiet; then
+            echo "No hay cambios de productos para guardar."
+          else
+            git commit -m "Conectar developer products de Tinta Final"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Confirmar productos conectados
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.sync.outputs.exit_code }}" != "0" ]; then
+            echo "Falló la sincronización de Developer Products. Revisar automation/DEVELOPER_PRODUCTS_STATUS.md."
+            exit 1
+          fi
+          if grep -q 'ProductId = 0' src/shared/MonetizationConfig.lua; then
+            echo "Hay ProductId sin conectar."
+            exit 1
+          fi
+          echo "Todos los productos Robux quedaron conectados."

@@ -1,52 +1,100 @@
 local Config = {}
 
-Config.GameName = "Tinta Final: Arena Shooter"
+Config.GameName = "Tinta Final: Competitive Arena"
 Config.UniverseId = 8973271699
 Config.PlaceId = 73618099851560
-Config.ExpectedMaxPlayers = 100
-Config.DataStoreName = "TintaFinal_PlayerData_v3"
-Config.BuildRevision = "2026.08.06.shooter.1"
+Config.ExpectedMaxPlayers = 20
+Config.DataStoreName = "TintaFinal_PlayerData_v4"
+Config.BuildRevision = "2026.08.06.competitive.2"
 
 Config.Match = {
     MinimumPlayers = 1,
-    IntermissionSeconds = 15,
-    VotingSeconds = 12,
+    MaxParticipants = 20,
+    TeamSize = 10,
+    IntermissionSeconds = 14,
+    VotingSeconds = 10,
     LoadingSeconds = 5,
     ResultsSeconds = 10,
-    RoundSeconds = 180,
-    TeamScoreLimit = 40,
-    FFAScoreLimit = 20,
+    RoundSeconds = 360,
+    TeamScoreLimit = 75,
+    FFAScoreLimit = 30,
     SurvivalWaves = 5,
     RespawnSeconds = 4,
-    FinalRewardWon = 8_000,
-    ParticipationWon = 250,
-    KillRewardWon = 120,
-    BotKillRewardWon = 60,
-    WinXP = 350,
-    KillXP = 35,
+    ParticipationTintaMoney = 350,
+    WinTintaMoney = 8_000,
+    KillTintaMoney = 140,
+    BotKillTintaMoney = 70,
+    WinXP = 400,
+    KillXP = 40,
+}
+
+Config.Competitive = {
+    StartingRating = 1_000,
+    RatingK = 32,
+    SeasonId = "S1-NEON",
+    WinSeasonPoints = 100,
+    LossSeasonPoints = 35,
+    KillSeasonPoints = 2,
+    PodiumRewards = {
+        [1] = 300_000_000,
+        [2] = 150_000_000,
+        [3] = 100_000_000,
+    },
+    Ranks = {
+        { Min = 0, Name = "BRONZE" },
+        { Min = 900, Name = "SILVER" },
+        { Min = 1_100, Name = "GOLD" },
+        { Min = 1_300, Name = "PLATINUM" },
+        { Min = 1_500, Name = "DIAMOND" },
+        { Min = 1_750, Name = "ELITE" },
+        { Min = 2_000, Name = "MASTER" },
+        { Min = 2_300, Name = "TINTA LEGEND" },
+    },
 }
 
 Config.Shooter = {
     DefaultWeapon = "InkRifle",
-    WeaponOrder = { "InkRifle", "NeonSMG", "SplashShotgun" },
+    WeaponOrder = {
+        "InkRifle",
+        "NeonSMG",
+        "SplashShotgun",
+        "PulseCarbine",
+        "ViperPistol",
+        "PrismSniper",
+        "VoltLMG",
+        "BurstRifle",
+    },
     MapOrder = { "NeonDistrict", "InkDepot", "RooftopRush" },
     Modes = {
-        Survival = { DisplayName = "Supervivencia de Tinta", MinimumPlayers = 1 },
-        TeamSplash = { DisplayName = "Cian vs Magenta", MinimumPlayers = 2 },
-        FreeSplash = { DisplayName = "Todos contra todos", MinimumPlayers = 2 },
+        TeamSplash = {
+            DisplayName = "10 VS 10 · CIAN VS MAGENTA",
+            MinimumPlayers = 2,
+            Competitive = true,
+        },
+        FreeSplash = {
+            DisplayName = "TODOS CONTRA TODOS",
+            MinimumPlayers = 2,
+            Competitive = true,
+        },
+        Survival = {
+            DisplayName = "ENTRENAMIENTO DE TINTA",
+            MinimumPlayers = 1,
+            Competitive = false,
+        },
     },
 }
 
 Config.Economy = {
-    CurrencyName = "Won",
-    CurrencySymbol = "₩",
-    StartingWon = 1_000,
+    CurrencyName = "Tinta Money",
+    CurrencyKey = "TintaMoney",
+    CurrencySymbol = "TM",
+    StartingTintaMoney = 5_000,
     StartingGems = 10,
-    BattlePassWonPrice = 200_000,
-    AFKRewardWon = 25,
+    BattlePassTintaMoneyPrice = 200_000,
+    AFKRewardTintaMoney = 25,
     AFKRewardIntervalSeconds = 60,
-    AFKSessionCapWon = 1_500,
-    SpinWonPrice = 3_000,
+    AFKSessionCapTintaMoney = 1_500,
+    SpinTintaMoneyPrice = 3_000,
 }
 
 Config.BattlePass = {
@@ -54,11 +102,11 @@ Config.BattlePass = {
     XPPerTier = 100,
     PremiumGamePassId = 0,
     FreeRewards = {
-        [1] = { Type = "Won", Amount = 500 },
+        [1] = { Type = "TintaMoney", Amount = 1_000 },
         [5] = { Type = "SpinTicket", Amount = 1 },
-        [10] = { Type = "Won", Amount = 2_500 },
+        [10] = { Type = "TintaMoney", Amount = 5_000 },
         [20] = { Type = "SpinTicket", Amount = 2 },
-        [30] = { Type = "Won", Amount = 8_000 },
+        [30] = { Type = "TintaMoney", Amount = 15_000 },
         [40] = { Type = "SpinTicket", Amount = 3 },
         [50] = { Type = "Cosmetic", Id = "InkChampionAura" },
     },
@@ -82,65 +130,95 @@ Config.Spin = {
     },
     PityAfter = 40,
     Rewards = {
-        Common = { "EmoteWave", "InkTrailBlue", "Won1000" },
-        Rare = { "EmoteDance", "InkTrailGreen", "Won3000" },
-        Epic = { "VictoryPose", "InkTrailPurple", "Won8000" },
-        Legendary = { "GoldenMask", "Won20000" },
-        Mythic = { "MythicInkCrown", "VoidAura", "Won50000" },
+        Common = { "EmoteWave", "InkTrailBlue", "TintaMoney1000" },
+        Rare = { "EmoteDance", "InkTrailGreen", "TintaMoney3000" },
+        Epic = { "VictoryPose", "InkTrailPurple", "TintaMoney8000" },
+        Legendary = { "GoldenMask", "TintaMoney20000" },
+        Mythic = { "MythicInkCrown", "VoidAura", "TintaMoney50000" },
     },
 }
 
-Config.ShopOrder = { "SpeedBoost", "HealthBoost", "NeonSMG", "SplashShotgun", "RewardBoost", "SpinTicket" }
+Config.ShopOrder = {
+    "NeonSMG",
+    "SplashShotgun",
+    "PulseCarbine",
+    "ViperPistol",
+    "PrismSniper",
+    "VoltLMG",
+    "BurstRifle",
+    "SpeedBoost",
+    "HealthBoost",
+    "RewardBoost",
+    "SpinTicket",
+    "NeonRebelSkin",
+    "CyanOperatorSkin",
+    "MagentaOperatorSkin",
+}
+
 Config.Shop = {
     SpeedBoost = {
         Type = "Upgrade",
-        DisplayName = "Velocidad +2",
-        Description = "Mejora permanente para moverte por las arenas.",
-        Currency = "Won",
-        Price = 8_000,
+        DisplayName = "MOVILIDAD +2",
+        Description = "Mejora permanente de velocidad para las arenas.",
+        Currency = "TintaMoney",
+        Price = 12_000,
         MaxPurchases = 3,
     },
     HealthBoost = {
         Type = "Upgrade",
-        DisplayName = "Resistencia +10",
+        DisplayName = "RESISTENCIA +10",
         Description = "Aumenta permanentemente tu vida máxima.",
-        Currency = "Won",
-        Price = 12_000,
+        Currency = "TintaMoney",
+        Price = 18_000,
         MaxPurchases = 5,
     },
     NeonSMG = {
-        Type = "Weapon",
-        WeaponId = "NeonSMG",
-        DisplayName = "SMG Neón",
-        Description = "Alta cadencia para combate cercano.",
-        Currency = "Won",
-        Price = 18_000,
-        MaxPurchases = 1,
+        Type = "Weapon", WeaponId = "NeonSMG", DisplayName = "SMG NEÓN",
+        Description = "Alta cadencia para combate cercano.", Currency = "TintaMoney", Price = 20_000, MaxPurchases = 1,
     },
     SplashShotgun = {
-        Type = "Weapon",
-        WeaponId = "SplashShotgun",
-        DisplayName = "Escopeta Splash",
-        Description = "Dispersión de tinta potente a corta distancia.",
-        Currency = "Won",
-        Price = 28_000,
-        MaxPurchases = 1,
+        Type = "Weapon", WeaponId = "SplashShotgun", DisplayName = "ESCOPETA SPLASH",
+        Description = "Gran impacto a corta distancia.", Currency = "TintaMoney", Price = 30_000, MaxPurchases = 1,
+    },
+    PulseCarbine = {
+        Type = "Weapon", WeaponId = "PulseCarbine", DisplayName = "CARABINA PULSE",
+        Description = "Rifle estable y preciso para media distancia.", Currency = "TintaMoney", Price = 42_000, MaxPurchases = 1,
+    },
+    ViperPistol = {
+        Type = "Weapon", WeaponId = "ViperPistol", DisplayName = "PISTOLA VIPER",
+        Description = "Secundaria rápida con buen daño por impacto.", Currency = "TintaMoney", Price = 16_000, MaxPurchases = 1,
+    },
+    PrismSniper = {
+        Type = "Weapon", WeaponId = "PrismSniper", DisplayName = "PRISM SNIPER",
+        Description = "Francotirador de alta precisión y baja cadencia.", Currency = "TintaMoney", Price = 85_000, MaxPurchases = 1,
+    },
+    VoltLMG = {
+        Type = "Weapon", WeaponId = "VoltLMG", DisplayName = "VOLT LMG",
+        Description = "Cargador grande para control de zonas.", Currency = "TintaMoney", Price = 70_000, MaxPurchases = 1,
+    },
+    BurstRifle = {
+        Type = "Weapon", WeaponId = "BurstRifle", DisplayName = "BURST RIFLE",
+        Description = "Rifle táctico semiautomático de alto control.", Currency = "TintaMoney", Price = 55_000, MaxPurchases = 1,
     },
     RewardBoost = {
-        Type = "Upgrade",
-        DisplayName = "Premio +10%",
-        Description = "Aumenta las recompensas obtenidas jugando.",
-        Currency = "Gems",
-        Price = 35,
-        MaxPurchases = 3,
+        Type = "Upgrade", DisplayName = "PREMIO +10%",
+        Description = "Aumenta las recompensas de Tinta Money obtenidas jugando.", Currency = "Gems", Price = 35, MaxPurchases = 3,
     },
     SpinTicket = {
-        Type = "Consumable",
-        DisplayName = "Ticket de giro",
-        Description = "Permite realizar un giro de recompensa.",
-        Currency = "Won",
-        Price = 3_000,
-        MaxPurchases = 999,
+        Type = "Consumable", DisplayName = "TICKET DE RECOMPENSA",
+        Description = "Permite realizar un giro de recompensa.", Currency = "TintaMoney", Price = 3_000, MaxPurchases = 999,
+    },
+    NeonRebelSkin = {
+        Type = "Cosmetic", ItemId = "NeonRebelSkin", DisplayName = "ASPECTO NEÓN REBELDE",
+        Description = "Aspecto negro, cian y magenta para el operador.", Currency = "TintaMoney", Price = 120_000, MaxPurchases = 1,
+    },
+    CyanOperatorSkin = {
+        Type = "Cosmetic", ItemId = "CyanOperatorSkin", DisplayName = "OPERADOR CIAN",
+        Description = "Armadura competitiva con acentos cian.", Currency = "TintaMoney", Price = 75_000, MaxPurchases = 1,
+    },
+    MagentaOperatorSkin = {
+        Type = "Cosmetic", ItemId = "MagentaOperatorSkin", DisplayName = "OPERADOR MAGENTA",
+        Description = "Armadura competitiva con acentos magenta.", Currency = "TintaMoney", Price = 75_000, MaxPurchases = 1,
     },
 }
 
@@ -158,6 +236,9 @@ Config.FeatureFlags = {
     ServerAuthoritativeWeapons = true,
     SoloSurvivalFallback = true,
     NonGraphicCombat = true,
+    CompetitiveRankings = true,
+    DonationLeaderboard = true,
+    RobuxShop = true,
 }
 
 return Config

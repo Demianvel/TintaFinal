@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Weapons = require(ReplicatedStorage.Shared.WeaponDefinitions)
 local ProfileService = require(script.Parent.ProfileService)
+local CharacterStyleService = require(script.Parent.CharacterStyleService)
 
 local WeaponService = {}
 local remotes
@@ -101,6 +102,7 @@ function WeaponService.SelectWeapon(player, weaponId)
     if not Weapons[weaponId] then return false, "Arma inválida." end
     if not ProfileService.SetSelectedWeapon(player, weaponId) then return false, "Primero desbloqueá esa arma." end
     sessions[player] = nil
+    if player.Character then CharacterStyleService.Apply(player, player.Character) end
     pushAmmo(player)
     return true, "Arma equipada.", ProfileService.Public(player)
 end
@@ -189,9 +191,7 @@ function WeaponService.Fire(player, origin, direction)
         end
     end
 
-    if registeredHit and remotes then
-        remotes.HitConfirm:FireClient(player, registeredHeadshot)
-    end
+    if registeredHit and remotes then remotes.HitConfirm:FireClient(player, registeredHeadshot) end
 end
 
 function WeaponService.PlayerRemoving(player)

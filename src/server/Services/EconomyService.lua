@@ -26,14 +26,18 @@ local function chooseWeighted(entries, minimumRarity)
 end
 
 local function spend(player, item)
-    if item.Currency == "Won" then return ProfileService.SpendWon(player, item.Price) end
+    if item.Currency == "TintaMoney" then return ProfileService.SpendTintaMoney(player, item.Price) end
     if item.Currency == "Gems" then return ProfileService.SpendGems(player, item.Price) end
     return false
 end
 
 local function awardSpinResult(player, rewardId)
-    local wonAmount = string.match(rewardId, "^Won(%d+)$")
-    if wonAmount then ProfileService.AddWon(player, tonumber(wonAmount)) else ProfileService.GrantItem(player, rewardId) end
+    local amount = string.match(rewardId, "^TintaMoney(%d+)$")
+    if amount then
+        ProfileService.AddTintaMoney(player, tonumber(amount))
+    else
+        ProfileService.GrantItem(player, rewardId)
+    end
 end
 
 function EconomyService.PurchaseShopItem(player, itemId)
@@ -44,13 +48,21 @@ function EconomyService.PurchaseShopItem(player, itemId)
     if item.Type == "Weapon" then
         local weaponId = item.WeaponId or itemId
         if profile.Inventory[weaponId] then return false, "Ya tenés esta arma." end
-        if not spend(player, item) then return false, "Saldo insuficiente." end
+        if not spend(player, item) then return false, "Tinta Money insuficiente." end
         ProfileService.GrantItem(player, weaponId)
         return true, item.DisplayName .. " desbloqueada."
     end
 
+    if item.Type == "Cosmetic" then
+        local inventoryId = item.ItemId or itemId
+        if profile.Inventory[inventoryId] then return false, "Ya tenés este aspecto." end
+        if not spend(player, item) then return false, "Tinta Money insuficiente." end
+        ProfileService.GrantItem(player, inventoryId)
+        return true, item.DisplayName .. " desbloqueado."
+    end
+
     if itemId == "SpinTicket" then
-        if not spend(player, item) then return false, "No tenés suficientes Won." end
+        if not spend(player, item) then return false, "No tenés suficiente Tinta Money." end
         profile.SpinTickets += 1
         return true, "Ticket agregado."
     end
@@ -63,17 +75,21 @@ function EconomyService.PurchaseShopItem(player, itemId)
     return true, "Compra realizada."
 end
 
-function EconomyService.BuyPremiumPassWithWon(player)
+function EconomyService.BuyPremiumPassWithTintaMoney(player)
     local profile = ProfileService.Get(player)
     if not profile then return false, "Perfil no disponible." end
     if profile.PremiumPass then return false, "Ya tenés el pase premium." end
-    if not ProfileService.SpendWon(player, Config.Economy.BattlePassWonPrice) then return false, "Necesitás más Won." end
+    if not ProfileService.SpendTintaMoney(player, Config.Economy.BattlePassTintaMoneyPrice) then
+        return false, "Necesitás más Tinta Money."
+    end
     profile.PremiumPass = true
     return true, "Pase premium desbloqueado."
 end
 
+EconomyService.BuyPremiumPassWithWon = EconomyService.BuyPremiumPassWithTintaMoney
+
 function EconomyService.QueueGuardRole()
-    return false, "Los roles de guardia fueron reemplazados por el modo shooter."
+    return false, "Los roles antiguos fueron reemplazados por Competitive Arena."
 end
 
 function EconomyService.Spin(player)
@@ -81,8 +97,8 @@ function EconomyService.Spin(player)
     if not profile then return false, "Perfil no disponible." end
     if profile.SpinTickets > 0 then
         profile.SpinTickets -= 1
-    elseif not ProfileService.SpendWon(player, Config.Economy.SpinWonPrice) then
-        return false, "Necesitás un ticket o más Won."
+    elseif not ProfileService.SpendTintaMoney(player, Config.Economy.SpinTintaMoneyPrice) then
+        return false, "Necesitás un ticket o más Tinta Money."
     end
     profile.SpinPity += 1
     local minimumRarity = profile.SpinPity >= Config.Spin.PityAfter and "Legendary" or "Common"
@@ -106,8 +122,8 @@ function EconomyService.ClaimBattlePassReward(player, tier, premium)
     local claimKey = (premium and "P" or "F") .. tostring(tier)
     if profile.ClaimedBattlePass[claimKey] then return false, "Recompensa ya reclamada." end
     profile.ClaimedBattlePass[claimKey] = true
-    if reward.Type == "Won" then
-        ProfileService.AddWon(player, reward.Amount)
+    if reward.Type == "TintaMoney" then
+        ProfileService.AddTintaMoney(player, reward.Amount)
     elseif reward.Type == "SpinTicket" then
         profile.SpinTickets += reward.Amount
     elseif reward.Type == "Cosmetic" or reward.Type == "Emote" then
