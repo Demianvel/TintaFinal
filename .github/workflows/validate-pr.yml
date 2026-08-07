@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - "src/**"
+      - "assets/branding/**"
       - "default.project.json"
       - ".github/workflows/validate-pr.yml"
 

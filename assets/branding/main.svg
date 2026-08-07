@@ -34,6 +34,6 @@
  <text x="640" y="235" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="132" letter-spacing="8" fill="url(#title)" stroke="#05060e" stroke-width="14" paint-order="stroke">TINTA</text>
  <text x="640" y="365" text-anchor="middle" font-family="Arial Black, Impact, sans-serif" font-size="132" letter-spacing="8" fill="#ffffff" stroke="#05060e" stroke-width="14" paint-order="stroke">FINAL</text>
 </g>
-<text x="640" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" letter-spacing="7" fill="#dce9ff">SOBREVIVÍ · COMPETÍ · LLEGÁ AL FINAL</text>
+<text x="640" y="420" text-anchor="middle" font-family="Arial, sans-serif" font-weight="700" font-size="27" letter-spacing="7" fill="#dce9ff">COMPETÍ · DOMINÁ · LLEGÁ AL FINAL</text>
 <path d="M350 650 H930" stroke="url(#title)" stroke-width="9" stroke-linecap="round"/>
 </svg>
