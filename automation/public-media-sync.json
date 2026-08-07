@@ -1,6 +1,6 @@
 {
   "mode": "PENDIENTE_ROBLOX",
-  "acceptedAt": "2026-08-07T18:24:27.015691+00:00",
+  "acceptedAt": "2026-08-07T19:32:39.155649+00:00",
   "languageDiscovery": {
     "statusCode": 200,
     "body": "{\"languageFamily\":{\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\"},\"defaultLocale\":{\"id\":2,\"locale\":\"es_es\",\"localeCode\":\"es_es\",\"name\":\"Spanish (Spain)\",\"nativeName\":\"Español (España)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}},\"childLocales\":[{\"id\":2,\"locale\":\"es_es\",\"localeCode\":\"es_es\",\"name\":\"Spanish (Spain)\",\"nativeName\":\"Español (España)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}},{\"id\":51,\"locale\":\"es_mx\",\"localeCode\":\"es_mx\",\"name\":\"Spanish (Mexico)\",\"nativeName\":\"Español (México)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}}]}",
@@ -58,8 +58,6 @@
   },
   "languageCandidates": [
     "es",
-    "es-es",
-    "es-mx",
     "en",
     "pt",
     "fr",
@@ -71,7 +69,7 @@
     "languageCode": "en",
     "field": "file",
     "response": {
-      "mediaAssetId": "87469905293993"
+      "mediaAssetId": "139553748441773"
     },
     "attempts": [
       {
@@ -81,34 +79,10 @@
         "body": "{\"errors\":[{\"code\":26,\"message\":\"You can't update translations for source language\"}]}"
       },
       {
-        "languageCode": "es",
-        "field": "imageFile",
-        "statusCode": 400,
-        "body": "{\"errors\":[{\"code\":26,\"message\":\"You can't update translations for source language\"}]}"
-      },
-      {
-        "languageCode": "es",
-        "field": "image",
-        "statusCode": 400,
-        "body": "{\"errors\":[{\"code\":26,\"message\":\"You can't update translations for source language\"}]}"
-      },
-      {
-        "languageCode": "es-es",
-        "field": "file",
-        "statusCode": 400,
-        "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"
-      },
-      {
-        "languageCode": "es-mx",
-        "field": "file",
-        "statusCode": 400,
-        "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"
-      },
-      {
         "languageCode": "en",
         "field": "file",
         "statusCode": 200,
-        "body": "{\"mediaAssetId\":\"87469905293993\"}"
+        "body": "{\"mediaAssetId\":\"139553748441773\"}"
       }
     ]
   },
