@@ -11,6 +11,7 @@ local Weapons = require(ReplicatedStorage.Shared:WaitForChild("WeaponDefinitions
 
 local fireRemote = remotes:WaitForChild("FireWeapon")
 local reloadRemote = remotes:WaitForChild("ReloadWeapon")
+local meleeRemote = remotes:WaitForChild("MeleeHit")
 local selectWeapon = remotes:WaitForChild("SelectWeapon")
 local getSnapshot = remotes:WaitForChild("GetSnapshot")
 local profileState = remotes:WaitForChild("ProfileState")
@@ -76,13 +77,11 @@ local function label(parent, value, size, position, fontSize, color, align)
     return text
 end
 
--- Información mínima de partida: no tapa la arena.
 local matchBar = panel(gui, UDim2.fromOffset(430, 52), UDim2.new(0.5, -215, 0, 18), DARK, 0.12)
 stroke(matchBar, CYAN, 0.34, 1.3)
-local scoreLabel = label(matchBar, "CALENTAMIENTO", UDim2.new(0.73, 0, 1, 0), UDim2.new(0, 10, 0, 0), 15, WHITE, Enum.TextXAlignment.Center)
+local scoreLabel = label(matchBar, "DUELO", UDim2.new(0.73, 0, 1, 0), UDim2.new(0, 10, 0, 0), 15, WHITE, Enum.TextXAlignment.Center)
 local timerLabel = label(matchBar, "0:00", UDim2.new(0.23, 0, 1, 0), UDim2.new(0.75, 0, 0, 0), 18, ORANGE, Enum.TextXAlignment.Center)
 
--- Vida arriba a la izquierda para dejar libre el joystick inferior.
 local health = panel(gui, UDim2.fromOffset(190, 30), UDim2.new(0, 22, 0, 132), Color3.fromRGB(17, 20, 31), 0.10)
 local healthFill = Instance.new("Frame")
 healthFill.Size = UDim2.fromScale(1, 1)
@@ -93,7 +92,6 @@ corner(healthFill, 99)
 local healthText = label(health, "100 HP", UDim2.fromScale(1, 1), UDim2.new(), 13, WHITE, Enum.TextXAlignment.Center)
 healthText.ZIndex = 3
 
--- Munición abajo al centro: separada de todos los botones táctiles.
 local ammo = panel(gui, UDim2.fromOffset(190, 58), UDim2.new(0.5, -95, 1, -20), DARK, 0.10)
 ammo.AnchorPoint = Vector2.new(0, 1)
 stroke(ammo, MAGENTA, 0.30, 1.3)
@@ -111,7 +109,6 @@ killLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
 killLayout.Padding = UDim.new(0, 4)
 killLayout.Parent = killBox
 
--- Mira central.
 local crosshair = Instance.new("Frame")
 crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
 crosshair.Position = UDim2.fromScale(0.5, 0.5)
@@ -132,12 +129,11 @@ for _, offset in ipairs({Vector2.new(0, -12), Vector2.new(0, 12), Vector2.new(-1
     table.insert(crossArms, arm)
 end
 
--- Controles táctiles de arma: una sola fila, sin símbolos que puedan renderizar como cuadrados.
-local function touchButton(textValue, color, rightOffset, size)
+local function touchButton(textValue, color, rightOffset, bottomOffset, size)
     local button = Instance.new("TextButton")
     button.Name = "Touch" .. textValue
     button.AnchorPoint = Vector2.new(1, 1)
-    button.Position = UDim2.new(1, -rightOffset, 1, -24)
+    button.Position = UDim2.new(1, -rightOffset, 1, -bottomOffset)
     button.Size = UDim2.fromOffset(size, size)
     button.BackgroundColor3 = color
     button.BackgroundTransparency = 0.18
@@ -154,9 +150,10 @@ local function touchButton(textValue, color, rightOffset, size)
     return button
 end
 
-local fireButton = touchButton("FUEGO", MAGENTA, 24, 100)
-local reloadButton = touchButton("REC", CYAN, 136, 62)
-local nextButton = touchButton("ARMA", ORANGE, 208, 62)
+local fireButton = touchButton("FUEGO", MAGENTA, 24, 24, 100)
+local reloadButton = touchButton("REC", CYAN, 136, 24, 62)
+local nextButton = touchButton("ARMA", ORANGE, 208, 24, 62)
+local meleeButton = touchButton("PEGAR", Color3.fromRGB(210, 70, 95), 24, 136, 76)
 
 local currentWeapon = "InkRifle"
 local inventory = {InkRifle = 1}
@@ -179,6 +176,7 @@ local function setVisible()
     fireButton.Visible = touchEnabled
     reloadButton.Visible = touchEnabled
     nextButton.Visible = touchEnabled
+    meleeButton.Visible = touchEnabled
     if not enabled then firing = false end
 end
 
@@ -238,21 +236,29 @@ local function nextWeapon()
     end
 end
 
+-- InputBegan mantiene fuego automático; Activated garantiza al menos un tiro en Android aun si se pierde el gesto.
 fireButton.InputBegan:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then startFire() end
 end)
 fireButton.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then stopFire() end
 end)
+fireButton.Activated:Connect(function()
+    fireOnce()
+end)
 reloadButton.Activated:Connect(function()
     if isCombat() then reloadRemote:FireServer() end
 end)
 nextButton.Activated:Connect(nextWeapon)
+meleeButton.Activated:Connect(function()
+    if isCombat() then meleeRemote:FireServer() end
+end)
 
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed or not isCombat() then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then startFire() end
     if input.KeyCode == Enum.KeyCode.R or input.KeyCode == Enum.KeyCode.ButtonX then reloadRemote:FireServer() end
+    if input.KeyCode == Enum.KeyCode.F or input.KeyCode == Enum.KeyCode.ButtonR3 then meleeRemote:FireServer() end
 
     local slots = {
         [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3,
@@ -351,8 +357,12 @@ end
 gameState.OnClientEvent:Connect(function(data)
     if type(data) ~= "table" then return end
     timerLabel.Text = timerText(data.TimeLeft)
-    if data.Phase == "Warmup" then
-        scoreLabel.Text = "CALENTAMIENTO · ESPERANDO RIVAL"
+    local duelSize = tonumber(data.DuelTeamSize)
+    if duelSize then
+        local scores = data.TeamScores or {}
+        scoreLabel.Text = string.format("%dV%d · CIAN %d - %d MAGENTA", duelSize, duelSize, scores.Cyan or 0, scores.Magenta or 0)
+    elseif data.Phase == "Warmup" then
+        scoreLabel.Text = "CALENTAMIENTO"
     elseif data.Mode == "TeamSplash" then
         local scores = data.TeamScores or {}
         scoreLabel.Text = string.format("CIAN %d  ·  %d MAGENTA", scores.Cyan or 0, scores.Magenta or 0)
@@ -385,4 +395,4 @@ if ok and type(snapshot) == "table" then
 end
 
 setVisible()
-print("[TintaFinal] HUD móvil limpio: fuego, recarga y cambio de arma separados.")
+print("[TintaFinal] HUD de combate v2: FUEGO reforzado, PEGAR, recarga y arma.")

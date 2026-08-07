@@ -6,10 +6,12 @@ local root
 local lobby
 local arena
 local points = {}
+local duelPads = {}
 
 local CYAN = Color3.fromRGB(0, 226, 239)
 local MAGENTA = Color3.fromRGB(255, 45, 145)
 local ORANGE = Color3.fromRGB(255, 145, 25)
+local PURPLE = Color3.fromRGB(115, 82, 230)
 local DARK = Color3.fromRGB(18, 21, 34)
 
 local function part(parent, name, size, cframe, color, material, collide)
@@ -31,7 +33,7 @@ local function neon(parent, name, size, cframe, color)
     return part(parent, name, size, cframe, color, Enum.Material.Neon, true)
 end
 
-local function sign(parent, text, position, size, color)
+local function sign(parent, textValue, position, size, color)
     local board = part(parent, "Sign", size or Vector3.new(28, 10, 1), CFrame.new(position), Color3.fromRGB(8, 9, 16), Enum.Material.Metal)
     local gui = Instance.new("SurfaceGui")
     gui.Face = Enum.NormalId.Front
@@ -40,13 +42,60 @@ local function sign(parent, text, position, size, color)
     local label = Instance.new("TextLabel")
     label.Size = UDim2.fromScale(1, 1)
     label.BackgroundTransparency = 1
-    label.Text = text
+    label.Text = textValue
     label.TextWrapped = true
     label.Font = Enum.Font.GothamBlack
     label.TextColor3 = color or Color3.new(1, 1, 1)
     label.TextScaled = true
     label.Parent = gui
     return board
+end
+
+local function floatingStatus(parent, adornee, title, color)
+    local gui = Instance.new("BillboardGui")
+    gui.Name = "DuelStatus"
+    gui.Adornee = adornee
+    gui.Size = UDim2.fromOffset(220, 92)
+    gui.StudsOffset = Vector3.new(0, 7, 0)
+    gui.AlwaysOnTop = true
+    gui.Parent = parent
+
+    local frame = Instance.new("Frame")
+    frame.Size = UDim2.fromScale(1, 1)
+    frame.BackgroundColor3 = Color3.fromRGB(7, 9, 16)
+    frame.BackgroundTransparency = 0.08
+    frame.BorderSizePixel = 0
+    frame.Parent = gui
+    local corner = Instance.new("UICorner")
+    corner.CornerRadius = UDim.new(0, 12)
+    corner.Parent = frame
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = color
+    stroke.Thickness = 2
+    stroke.Transparency = 0.15
+    stroke.Parent = frame
+
+    local titleLabel = Instance.new("TextLabel")
+    titleLabel.Size = UDim2.new(1, -12, 0, 40)
+    titleLabel.Position = UDim2.new(0, 6, 0, 4)
+    titleLabel.BackgroundTransparency = 1
+    titleLabel.Text = title
+    titleLabel.TextColor3 = Color3.new(1, 1, 1)
+    titleLabel.Font = Enum.Font.GothamBlack
+    titleLabel.TextScaled = true
+    titleLabel.Parent = frame
+
+    local statusLabel = Instance.new("TextLabel")
+    statusLabel.Name = "Status"
+    statusLabel.Size = UDim2.new(1, -12, 0, 36)
+    statusLabel.Position = UDim2.new(0, 6, 0, 48)
+    statusLabel.BackgroundTransparency = 1
+    statusLabel.Text = "PISÁ PARA ENTRAR"
+    statusLabel.TextColor3 = color
+    statusLabel.Font = Enum.Font.GothamBold
+    statusLabel.TextScaled = true
+    statusLabel.Parent = frame
+    return statusLabel
 end
 
 local function makeGrid(center, count, columns, spacing)
@@ -97,6 +146,8 @@ function MapService.BuildLobby()
     local existing = Workspace:FindFirstChild("TintaFinalWorld")
     if existing then existing:Destroy() end
 
+    points = {}
+    duelPads = {}
     root = Instance.new("Folder")
     root.Name = "TintaFinalWorld"
     root.Parent = Workspace
@@ -133,24 +184,37 @@ function MapService.BuildLobby()
     spawn.Material = Enum.Material.Neon
     spawn.Parent = lobby
 
-    part(lobby, "CenterStage", Vector3.new(100, 2, 55), CFrame.new(0, 0, -20), Color3.fromRGB(31, 34, 49), Enum.Material.Metal)
-    sign(lobby, "TINTA FINAL\nARENA SHOOTER", Vector3.new(0, 20, -105), Vector3.new(54, 17, 1), CYAN)
+    part(lobby, "CenterStage", Vector3.new(245, 2, 65), CFrame.new(0, 0, -28), Color3.fromRGB(31, 34, 49), Enum.Material.Metal)
+    sign(lobby, "TINTA FINAL\nELEGÍ TU DUELO", Vector3.new(0, 20, -105), Vector3.new(58, 17, 1), CYAN)
     sign(lobby, "ARMERÍA", Vector3.new(-112, 12, -70), Vector3.new(28, 10, 1), ORANGE)
     sign(lobby, "TIENDA", Vector3.new(112, 12, -70), Vector3.new(28, 10, 1), MAGENTA)
-    sign(lobby, "PORTAL DE COMBATE", Vector3.new(0, 11, 5), Vector3.new(34, 10, 1), Color3.new(1,1,1))
+    sign(lobby, "PISÁ UNA PARCELA · 10 SEGUNDOS", Vector3.new(0, 11, 12), Vector3.new(52, 9, 1), Color3.new(1, 1, 1))
 
     for i = 1, 4 do
         local x = -115 + (i - 1) * 77
         neon(lobby, "LobbyPillar", Vector3.new(3, 24, 3), CFrame.new(x, 10, -95), i % 2 == 0 and MAGENTA or CYAN)
     end
 
-    points.VotePads = {}
-    for index = 1, 3 do
-        local x = (index - 2) * 42
-        local pad = neon(lobby, "VotePad" .. index, Vector3.new(30, 1, 22), CFrame.new(x, 0, -55), index == 1 and CYAN or (index == 2 and MAGENTA or ORANGE))
-        pad:SetAttribute("VoteIndex", index)
-        points.VotePads[index] = pad.Position
+    local definitions = {
+        {TeamSize = 1, Label = "1 VS 1", X = -102, Color = CYAN},
+        {TeamSize = 2, Label = "2 VS 2", X = -34, Color = ORANGE},
+        {TeamSize = 6, Label = "6 VS 6", X = 34, Color = PURPLE},
+        {TeamSize = 10, Label = "10 VS 10", X = 102, Color = MAGENTA},
+    }
+    for _, definition in ipairs(definitions) do
+        local pad = neon(lobby, "DuelPad" .. definition.TeamSize, Vector3.new(54, 1, 34), CFrame.new(definition.X, 0.6, -35), definition.Color)
+        pad:SetAttribute("DuelTeamSize", definition.TeamSize)
+        pad:SetAttribute("DuelCapacity", definition.TeamSize * 2)
+        local statusLabel = floatingStatus(lobby, pad, definition.Label, definition.Color)
+        duelPads[definition.TeamSize] = {
+            Pad = pad,
+            StatusLabel = statusLabel,
+            TeamSize = definition.TeamSize,
+            Capacity = definition.TeamSize * 2,
+            WaitingPosition = pad.Position + Vector3.new(0, 3, 0),
+        }
     end
+    points.DuelPads = duelPads
 
     return points
 end
@@ -161,7 +225,15 @@ end
 
 function MapService.GetPoint(name) return points[name] end
 function MapService.GetPoints() return points end
+function MapService.GetDuelPads() return duelPads end
 function MapService.MakeGridPositions(center, count, columns, spacing) return makeGrid(center, count, columns, spacing) end
+
+function MapService.UpdateDuelPad(teamSize, statusText)
+    local entry = duelPads[tonumber(teamSize)]
+    if entry and entry.StatusLabel and entry.StatusLabel.Parent then
+        entry.StatusLabel.Text = tostring(statusText or "PISÁ PARA ENTRAR")
+    end
+end
 
 function MapService.Teleport(player, position)
     local rootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
@@ -181,6 +253,47 @@ local function baseArena(name, width, depth)
     part(model, "Floor", Vector3.new(width, 3, depth), CFrame.new(origin + Vector3.new(0, -3, 0)), Color3.fromRGB(24, 28, 39), Enum.Material.Concrete)
     wallBox(model, origin + Vector3.new(0, -1, 0), width, depth, 28, Color3.fromRGB(39, 43, 58))
     return model, origin
+end
+
+local function duelArena(teamSize)
+    teamSize = math.clamp(math.floor(tonumber(teamSize) or 1), 1, 10)
+    local dimensions = {
+        [1] = {150, 120},
+        [2] = {185, 145},
+        [6] = {260, 215},
+        [10] = {320, 260},
+    }
+    local chosen = dimensions[teamSize] or dimensions[1]
+    local width, depth = chosen[1], chosen[2]
+    local model, origin = baseArena("Duel" .. teamSize .. "v" .. teamSize, width, depth)
+    sign(model, string.format("DUELO %d VS %d", teamSize, teamSize), origin + Vector3.new(0, 20, -depth / 2 + 3), Vector3.new(48, 13, 1), ORANGE)
+
+    local coverRows = teamSize <= 2 and 2 or (teamSize <= 6 and 3 or 4)
+    for row = -coverRows, coverRows do
+        local z = row * math.max(22, depth / (coverRows * 2 + 2))
+        if math.abs(z) < depth / 2 - 20 then
+            cover(model, origin + Vector3.new(-width * 0.18, 4, z), Vector3.new(16, 8, 6), Color3.fromRGB(34, 77, 88))
+            cover(model, origin + Vector3.new(width * 0.18, 4, -z), Vector3.new(16, 8, 6), Color3.fromRGB(85, 34, 69))
+        end
+    end
+    crate(model, origin + Vector3.new(0, 4, 0), ORANGE)
+    neon(model, "CyanGoalLine", Vector3.new(5, 0.25, depth - 18), CFrame.new(origin + Vector3.new(-width / 2 + 15, -1.2, 0)), CYAN).CanCollide = false
+    neon(model, "MagentaGoalLine", Vector3.new(5, 0.25, depth - 18), CFrame.new(origin + Vector3.new(width / 2 - 15, -1.2, 0)), MAGENTA).CanCollide = false
+
+    local spawnCount = math.max(10, teamSize * 2)
+    local columns = math.max(1, math.min(teamSize, 5))
+    local cyanCenter = origin + Vector3.new(-width * 0.34, 1, 0)
+    local magentaCenter = origin + Vector3.new(width * 0.34, 1, 0)
+    return {
+        Id = "Duel" .. teamSize .. "v" .. teamSize,
+        DisplayName = string.format("Duelo %d vs %d", teamSize, teamSize),
+        Origin = origin,
+        DuelTeamSize = teamSize,
+        CyanSpawns = makeGrid(cyanCenter, spawnCount, columns, 10),
+        MagentaSpawns = makeGrid(magentaCenter, spawnCount, columns, 10),
+        FFASpawns = makeGrid(origin, math.max(20, teamSize * 2), math.max(2, columns * 2), 16),
+        BotSpawns = makeGrid(origin, math.max(20, teamSize * 2), math.max(2, columns * 2), 16),
+    }
 end
 
 local function neonDistrict()
@@ -273,6 +386,10 @@ local function rooftopRush()
         FFASpawns = makeGrid(origin + Vector3.new(0, 10, 0), 100, 10, 23),
         BotSpawns = makeGrid(origin + Vector3.new(0, 10, 0), 24, 6, 38),
     }
+end
+
+function MapService.BuildDuelGame(teamSize)
+    return duelArena(teamSize)
 end
 
 function MapService.BuildGame(mapId)
