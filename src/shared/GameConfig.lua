@@ -5,7 +5,7 @@ Config.UniverseId = 8973271699
 Config.PlaceId = 73618099851560
 Config.ExpectedMaxPlayers = 20
 Config.DataStoreName = "TintaFinal_PlayerData_v4"
-Config.BuildRevision = "2026.08.07.pvp-liveops.1"
+Config.BuildRevision = "2026.08.07.pvp-liveops.2"
 
 Config.Match = {
     MinimumPlayers = 2,
@@ -185,6 +185,10 @@ Config.ShopOrder = {
     "RailCarbine",
     "NovaPistol",
     "EclipseSniper",
+    "UtilityMedkit",
+    "UtilityInkGrenade",
+    "UtilitySmoke",
+    "UtilityStim",
     "SpeedBoost",
     "HealthBoost",
     "RewardBoost",
@@ -195,14 +199,8 @@ Config.ShopOrder = {
 }
 
 Config.Shop = {
-    SpeedBoost = {
-        Type = "Upgrade", DisplayName = "MOVILIDAD +2",
-        Description = "Mejora permanente de velocidad para las arenas.", Currency = "TintaMoney", Price = 12_000, MaxPurchases = 3,
-    },
-    HealthBoost = {
-        Type = "Upgrade", DisplayName = "RESISTENCIA +10",
-        Description = "Aumenta permanentemente tu vida máxima.", Currency = "TintaMoney", Price = 18_000, MaxPurchases = 5,
-    },
+    SpeedBoost = { Type = "Upgrade", DisplayName = "MOVILIDAD +2", Description = "Mejora permanente de velocidad para las arenas.", Currency = "TintaMoney", Price = 12_000, MaxPurchases = 3 },
+    HealthBoost = { Type = "Upgrade", DisplayName = "RESISTENCIA +10", Description = "Aumenta permanentemente tu vida máxima.", Currency = "TintaMoney", Price = 18_000, MaxPurchases = 5 },
     NeonSMG = { Type = "Weapon", WeaponId = "NeonSMG", DisplayName = "SMG NEÓN", Description = "Alta cadencia para combate cercano.", Currency = "TintaMoney", Price = 20_000, MaxPurchases = 1 },
     SplashShotgun = { Type = "Weapon", WeaponId = "SplashShotgun", DisplayName = "ESCOPETA SPLASH", Description = "Gran impacto a corta distancia.", Currency = "TintaMoney", Price = 30_000, MaxPurchases = 1 },
     PulseCarbine = { Type = "Weapon", WeaponId = "PulseCarbine", DisplayName = "CARABINA PULSE", Description = "Rifle estable y preciso para media distancia.", Currency = "TintaMoney", Price = 42_000, MaxPurchases = 1 },
@@ -216,6 +214,10 @@ Config.Shop = {
     RailCarbine = { Type = "Weapon", WeaponId = "RailCarbine", DisplayName = "RAIL CARBINE", Description = "Carabina precisa de alto impacto.", Currency = "TintaMoney", Price = 88_000, MaxPurchases = 1 },
     NovaPistol = { Type = "Weapon", WeaponId = "NovaPistol", DisplayName = "NOVA PISTOL", Description = "Pistola competitiva ligera y rápida.", Currency = "TintaMoney", Price = 34_000, MaxPurchases = 1 },
     EclipseSniper = { Type = "Weapon", WeaponId = "EclipseSniper", DisplayName = "ECLIPSE SNIPER", Description = "Francotirador mítico de precisión extrema.", Currency = "TintaMoney", Price = 145_000, MaxPurchases = 1 },
+    UtilityMedkit = { Type = "Utility", ItemId = "UtilityMedkit", DisplayName = "BOTIQUÍN DE CAMPO", Description = "Recupera 45 de vida durante PvP.", Currency = "TintaMoney", Price = 4_500, MaxPurchases = 999 },
+    UtilityInkGrenade = { Type = "Utility", ItemId = "UtilityInkGrenade", DisplayName = "GRANADA DE TINTA", Description = "Pulso de tinta de área para combate competitivo.", Currency = "TintaMoney", Price = 7_500, MaxPurchases = 999 },
+    UtilitySmoke = { Type = "Utility", ItemId = "UtilitySmoke", DisplayName = "HUMO TÁCTICO", Description = "Crea una nube temporal para cortar visión.", Currency = "TintaMoney", Price = 5_500, MaxPurchases = 999 },
+    UtilityStim = { Type = "Utility", ItemId = "UtilityStim", DisplayName = "STIM DE MOVILIDAD", Description = "Aumenta temporalmente la velocidad.", Currency = "TintaMoney", Price = 6_500, MaxPurchases = 999 },
     RewardBoost = { Type = "Upgrade", DisplayName = "PREMIO +10%", Description = "Aumenta las recompensas de Tinta Money obtenidas jugando.", Currency = "Gems", Price = 35, MaxPurchases = 3 },
     SpinTicket = { Type = "Consumable", DisplayName = "TICKET DE RECOMPENSA", Description = "Permite realizar un giro de recompensa.", Currency = "TintaMoney", Price = 3_000, MaxPurchases = 999 },
     NeonRebelSkin = { Type = "Cosmetic", ItemId = "NeonRebelSkin", DisplayName = "ASPECTO NEÓN REBELDE", Description = "Aspecto negro, cian y magenta para el operador.", Currency = "TintaMoney", Price = 120_000, MaxPurchases = 1 },
