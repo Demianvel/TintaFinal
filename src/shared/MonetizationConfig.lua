@@ -1,5 +1,6 @@
 -- Auto-synced by scripts/sync_developer_products.py.
 -- ProductId values stay at 0 until the Open Cloud workflow creates or resolves them.
+-- Trigger de sincronización: scopes developer-product habilitados 2026-08-06.
 return {
     UniverseId = 8973271699,
     Products = {
