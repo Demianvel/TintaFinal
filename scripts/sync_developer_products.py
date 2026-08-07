@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Create/resolve Tinta Final developer products and write their IDs into Lua config."""
 
-# Trigger: 2026-08-06 permisos de developer products confirmados por el propietario.
+# Trigger: 2026-08-06 multipart/form-data según OpenAPI oficial de Roblox.
 from __future__ import annotations
 
 import json
@@ -81,14 +81,15 @@ def list_products() -> list[dict]:
 
 
 def create_product(spec: dict) -> dict:
-    body = {
-        "name": spec["name"],
-        "description": spec["description"],
-        "isForSale": True,
-        "price": int(spec["price"]),
-        "isRegionalPricingEnabled": False,
+    # Roblox Developer Products v2 requires multipart/form-data, even when no image is sent.
+    multipart = {
+        "name": (None, spec["name"]),
+        "description": (None, spec["description"]),
+        "isForSale": (None, "true"),
+        "price": (None, str(int(spec["price"]))),
+        "isManagedPricingEnabled": (None, "false"),
     }
-    response = requests.post(API_ROOT, headers={**headers(), "Content-Type": "application/json"}, json=body, timeout=60)
+    response = requests.post(API_ROOT, headers=headers(), files=multipart, timeout=60)
     if not response.ok:
         raise RuntimeError(f"No se pudo crear {spec['name']}: HTTP {response.status_code} - {response.text[:1500]}")
     payload = response.json()
