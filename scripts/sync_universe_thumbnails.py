@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Upload Tinta Final artwork as real Roblox universe thumbnails and verify completion."""
 
+# Trigger: universe.thumbnail read/write habilitado y workflow instalado.
 from __future__ import annotations
 
 import json
