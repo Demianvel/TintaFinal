@@ -1,0 +1,90 @@
+name: Validar TintaFinal en PR
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "src/**"
+      - "default.project.json"
+      - ".github/workflows/validate-pr.yml"
+
+permissions:
+  contents: read
+
+env:
+  ROJO_VERSION: "7.6.1"
+
+jobs:
+  validate:
+    name: Sourcemap y build RBXLX
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+
+      - name: Validar estructura base
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f default.project.json
+          test -d src/server
+          test -d src/client
+          test -d src/shared
+          test -f src/server/Main.server.lua
+          python3 -m json.tool default.project.json >/dev/null
+
+      - name: Instalar Rust compatible con Rojo
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.88.0"
+
+      - name: Cachear Rojo
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/rojo
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-rojo-${{ env.ROJO_VERSION }}-rust-1.88.0
+
+      - name: Instalar Rojo
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v rojo >/dev/null 2>&1; then
+            cargo install rojo --version "${ROJO_VERSION}" --locked
+          fi
+          rojo --version
+
+      - name: Generar sourcemap
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p build
+          rojo sourcemap default.project.json --output build/sourcemap.json
+          test -s build/sourcemap.json
+
+      - name: Compilar RBXLX
+        shell: bash
+        run: |
+          set -euo pipefail
+          rojo build default.project.json --output build/TintaFinal.rbxlx
+          test -s build/TintaFinal.rbxlx
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('build/TintaFinal.rbxlx')
+          if p.stat().st_size < 1000:
+              raise SystemExit('El archivo RBXLX generado es demasiado pequeño.')
+          print(f'RBXLX generado: {p.stat().st_size} bytes')
+          PY
+
+      - name: Guardar build de validación
+        uses: actions/upload-artifact@v4
+        with:
+          name: TintaFinal-PR-Validation
+          path: |
+            build/TintaFinal.rbxlx
+            build/sourcemap.json
+          if-no-files-found: error
+          retention-days: 7
