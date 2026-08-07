@@ -1,4 +1,5 @@
 name: Sync Tinta Final public game media
+# Retry after Roblox Open Cloud legacy/game-pass/product/messaging scopes were expanded on 2026-08-07.
 
 on:
   workflow_dispatch:
