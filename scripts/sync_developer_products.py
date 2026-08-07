@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Create/resolve Tinta Final developer products and write their IDs into Lua config."""
 
+# Trigger: 2026-08-06 permisos de developer products confirmados por el propietario.
 from __future__ import annotations
 
 import json
