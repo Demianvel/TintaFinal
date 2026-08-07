@@ -38,5 +38,65 @@
         "moderationStatus": "Approved"
       }
     }
+  },
+  "personalizedInventory": {
+    "homepageThumbnails": [
+      {
+        "homepageThumbnailId": "d47b764f-e739-444f-9e33-acf2bcd7d367",
+        "assetId": 80353689172158,
+        "moderationStatus": "Approved",
+        "personalizedConfigStatus": "Active",
+        "homepageThumbnailStatus": "Active"
+      },
+      {
+        "homepageThumbnailId": "07df6693-4459-4def-9e11-1ef472be64b8",
+        "assetId": 97466820809504,
+        "moderationStatus": "Approved",
+        "personalizedConfigStatus": "Inactive",
+        "homepageThumbnailStatus": "Active"
+      },
+      {
+        "homepageThumbnailId": "2e2605b7-0a56-4871-b7e9-3b5757aaee16",
+        "assetId": 89122149779070,
+        "moderationStatus": "Approved",
+        "personalizedConfigStatus": "Inactive",
+        "homepageThumbnailStatus": "Active"
+      },
+      {
+        "homepageThumbnailId": "45a813f2-69ff-47dc-b64a-c60411f9ec18",
+        "assetId": 81297545106541,
+        "moderationStatus": "Approved",
+        "personalizedConfigStatus": "Inactive",
+        "homepageThumbnailStatus": "Active"
+      },
+      {
+        "homepageThumbnailId": "f057e209-7b92-476d-af2b-be28793242cb",
+        "assetId": 136876413568899,
+        "moderationStatus": "Approved",
+        "personalizedConfigStatus": "Inactive",
+        "homepageThumbnailStatus": "Active"
+      },
+      {
+        "homepageThumbnailId": "9c9d37da-954d-44af-85aa-90f53de94400",
+        "assetId": 102691585683496,
+        "moderationStatus": "Approved",
+        "personalizedConfigStatus": "Inactive",
+        "homepageThumbnailStatus": "Active"
+      }
+    ],
+    "nextCursor": ""
+  },
+  "publicMedia": {
+    "data": [
+      {
+        "assetTypeId": 1,
+        "assetType": "Image",
+        "imageId": 80353689172158,
+        "videoHash": null,
+        "videoTitle": null,
+        "approved": true,
+        "altText": null
+      }
+    ]
   }
 }
