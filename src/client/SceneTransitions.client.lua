@@ -6,7 +6,9 @@ local player = Players.LocalPlayer
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local gameState = remotes:WaitForChild("GameState")
 local getSnapshot = remotes:WaitForChild("GetSnapshot")
-local Visual = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("VisualConfig"))
+local shared = ReplicatedStorage:WaitForChild("Shared")
+local Visual = require(shared:WaitForChild("VisualConfig"))
+local VisualAssetResolver = require(shared:WaitForChild("VisualAssetResolver"))
 
 local gui = Instance.new("ScreenGui")
 gui.Name = "TintaFinalSceneTransition"
@@ -25,8 +27,10 @@ root.Visible = false
 root.Parent = gui
 
 local image = Instance.new("ImageLabel")
+image.Name = "SceneArt"
 image.Size = UDim2.fromScale(1, 1)
-image.BackgroundTransparency = 1
+image.BackgroundColor3 = Color3.fromRGB(5, 7, 14)
+image.BackgroundTransparency = 0
 image.ImageTransparency = 1
 image.ScaleType = Enum.ScaleType.Crop
 image.Parent = root
@@ -98,19 +102,26 @@ local mapNames = {
     RooftopRush = "AZOTEAS NEÓN",
 }
 
-local function assetUrl(id)
-    id = tonumber(id) or 0
-    return id > 0 and ("rbxassetid://" .. tostring(id)) or ""
-end
+local allVisualIds = {
+    Visual.Assets.MainMenu,
+    Visual.Assets.Loading,
+    Visual.Assets.Lobby,
+    Visual.Assets.Round1,
+    Visual.Assets.Round2,
+    Visual.Assets.Shop,
+}
+
+task.spawn(function()
+    VisualAssetResolver.Preload(allVisualIds)
+end)
 
 local function show(assetId, text, duration, withProgress)
     transitionToken += 1
     local token = transitionToken
-    local imageUrl = assetUrl(assetId)
 
     root.Visible = true
     root.BackgroundTransparency = 1
-    image.Image = imageUrl
+    image.Image = ""
     image.ImageTransparency = 1
     shade.BackgroundTransparency = 1
     status.Text = text or "TINTA FINAL"
@@ -118,9 +129,14 @@ local function show(assetId, text, duration, withProgress)
     progress.Size = UDim2.fromScale(0, 1)
     progressBack.Visible = withProgress == true
 
+    local hasArt = (tonumber(assetId) or 0) > 0
+    if hasArt then
+        VisualAssetResolver.Apply(image, assetId, 1.6)
+    end
+
     TweenService:Create(root, TweenInfo.new(0.18), {BackgroundTransparency = 0}):Play()
-    TweenService:Create(image, TweenInfo.new(0.28), {ImageTransparency = imageUrl == "" and 1 or 0.01}):Play()
-    TweenService:Create(shade, TweenInfo.new(0.28), {BackgroundTransparency = imageUrl == "" and 0.2 or 0.72}):Play()
+    TweenService:Create(image, TweenInfo.new(0.24), {ImageTransparency = hasArt and 0.01 or 1}):Play()
+    TweenService:Create(shade, TweenInfo.new(0.28), {BackgroundTransparency = hasArt and 0.76 or 0.20}):Play()
     TweenService:Create(status, TweenInfo.new(0.22), {TextTransparency = 0}):Play()
 
     if withProgress then
@@ -146,7 +162,7 @@ end
 local function showBoot()
     if bootShown then return end
     bootShown = true
-    task.spawn(show, Visual.Assets.MainMenu, "TINTA FINAL · ENTRANDO A LA ARENA", 1.25, true)
+    task.spawn(show, Visual.Assets.MainMenu, "TINTA FINAL · ENTRANDO A LA ARENA", 1.45, true)
 end
 
 local function roundAsset()
@@ -167,18 +183,18 @@ local function handleState(state, force)
     if not changed then return end
 
     if phase == "Loading" then
-        task.spawn(show, Visual.Assets.Loading, "PREPARANDO LA BATALLA · " .. (mapNames[mapId] or "ARENA PVP"), 2.05, true)
+        task.spawn(show, Visual.Assets.Loading, "PREPARANDO LA BATALLA · " .. (mapNames[mapId] or "ARENA PVP"), 2.15, true)
     elseif phase == "Combat" then
         local artId, roundText = roundAsset()
-        task.spawn(show, artId, roundText, 1.20, false)
+        task.spawn(show, artId, roundText, 1.35, false)
     elseif phase == "Warmup" then
-        task.spawn(show, Visual.Assets.Lobby, "CALENTAMIENTO · MOVETE, APUNTÁ, DISPARÁ Y RECARGÁ", 1.05, false)
+        task.spawn(show, Visual.Assets.Lobby, "CALENTAMIENTO · MOVETE, APUNTÁ, DISPARÁ Y RECARGÁ", 1.15, false)
     elseif phase == "Results" then
-        task.spawn(show, Visual.Assets.Shop, "RONDA TERMINADA · RECOMPENSAS Y RANKING", 1.25, false)
+        task.spawn(show, Visual.Assets.Shop, "RONDA TERMINADA · RECOMPENSAS Y RANKING", 1.35, false)
     elseif phase == "Intermission" then
-        task.spawn(show, Visual.Assets.MainMenu, "PRÓXIMA PARTIDA · MAPA AUTOMÁTICO", 0.95, false)
+        task.spawn(show, Visual.Assets.MainMenu, "PRÓXIMA PARTIDA · MAPA AUTOMÁTICO", 1.05, false)
     elseif phase == "Waiting" and force == true then
-        task.spawn(show, Visual.Assets.Lobby, "LOBBY PVP · ESPERANDO JUGADORES", 0.95, false)
+        task.spawn(show, Visual.Assets.Lobby, "LOBBY PVP · ESPERANDO JUGADORES", 1.05, false)
     end
 end
 
@@ -188,7 +204,7 @@ end)
 
 showBoot()
 task.spawn(function()
-    task.wait(0.30)
+    task.wait(0.35)
     local ok, snapshot = pcall(function()
         return getSnapshot:InvokeServer()
     end)
@@ -198,4 +214,4 @@ task.spawn(function()
     end
 end)
 
-print("[TintaFinal] Pantallas y transiciones visuales PvP sincronizadas.")
+print("[TintaFinal] Imágenes y transiciones PvP cargadas con fallback visual.")
