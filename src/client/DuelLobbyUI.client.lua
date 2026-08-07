@@ -63,6 +63,13 @@ local function makeWorldVisible()
             child.Visible = false
         end
     end
+    -- La cola automática anterior ya no se usa: los duelos se eligen caminando a las parcelas.
+    for _, descendant in ipairs(root:GetDescendants()) do
+        if descendant:IsA("TextButton") then
+            local text = string.upper(tostring(descendant.Text or ""))
+            if string.find(text, "JUGAR", 1, true) then descendant.Visible = false end
+        end
+    end
 end
 
 local function refreshVisibility(state)
