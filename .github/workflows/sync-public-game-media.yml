@@ -5,7 +5,7 @@ on:
   push:
     branches: [main]
     paths:
-      - "assets/branding/main.svg"
+      - "assets/branding/**"
       - "scripts/sync_public_game_media.py"
       - ".github/workflows/sync-public-game-media.yml"
 
@@ -27,6 +27,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Preparar diagnóstico persistente
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p automation
+          cat > automation/PUBLIC_MEDIA_STATUS.md <<'EOF'
+          # Portada pública de Tinta Final
+
+          - Estado: INICIANDO
+          - Detalle: El workflow comenzó pero todavía no confirmó la sincronización.
+          EOF
+          : > automation/public-media-sync.log
+
       - name: Configurar Python
         uses: actions/setup-python@v5
         with:
@@ -43,7 +56,6 @@ jobs:
         shell: bash
         run: |
           set +e
-          mkdir -p automation
           python scripts/sync_public_game_media.py 2>&1 | tee automation/public-media-sync.log
           code=${PIPESTATUS[0]}
           echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
