@@ -32,6 +32,7 @@ gui.Name = "TintaFinalShooterHUD"
 gui.IgnoreGuiInset = true
 gui.ResetOnSpawn = false
 gui.DisplayOrder = 60
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 gui.Parent = player:WaitForChild("PlayerGui")
 
 local function corner(object, radius)
@@ -43,71 +44,74 @@ end
 local function stroke(object, color, transparency, thickness)
     local s = Instance.new("UIStroke")
     s.Color = color or CYAN
-    s.Transparency = transparency or 0.25
-    s.Thickness = thickness or 1.5
+    s.Transparency = transparency or 0.30
+    s.Thickness = thickness or 1.4
     s.Parent = object
 end
 
 local function panel(parent, size, position, color, transparency)
-    local f = Instance.new("Frame")
-    f.Size = size
-    f.Position = position
-    f.BackgroundColor3 = color or DARK
-    f.BackgroundTransparency = transparency or 0.14
-    f.BorderSizePixel = 0
-    f.Parent = parent
-    corner(f, 12)
-    return f
+    local frame = Instance.new("Frame")
+    frame.Size = size
+    frame.Position = position
+    frame.BackgroundColor3 = color or DARK
+    frame.BackgroundTransparency = transparency or 0.16
+    frame.BorderSizePixel = 0
+    frame.Parent = parent
+    corner(frame, 12)
+    return frame
 end
 
-local function text(parent, value, size, position, fontSize, color, align)
-    local l = Instance.new("TextLabel")
-    l.Size = size
-    l.Position = position or UDim2.new()
-    l.BackgroundTransparency = 1
-    l.Text = value
-    l.Font = Enum.Font.GothamBold
-    l.TextSize = fontSize or 16
-    l.TextColor3 = color or WHITE
-    l.TextWrapped = true
-    l.TextXAlignment = align or Enum.TextXAlignment.Left
-    l.Parent = parent
-    return l
+local function label(parent, value, size, position, fontSize, color, align)
+    local text = Instance.new("TextLabel")
+    text.Size = size
+    text.Position = position or UDim2.new()
+    text.BackgroundTransparency = 1
+    text.Text = value
+    text.Font = Enum.Font.GothamBold
+    text.TextSize = fontSize or 16
+    text.TextColor3 = color or WHITE
+    text.TextWrapped = true
+    text.TextXAlignment = align or Enum.TextXAlignment.Left
+    text.Parent = parent
+    return text
 end
 
-local matchBar = panel(gui, UDim2.fromOffset(470, 58), UDim2.new(0.5, -235, 0, 18), DARK, 0.12)
-stroke(matchBar, CYAN, 0.28, 1.5)
-local scoreLabel = text(matchBar, "CIAN 0  ·  0 MAGENTA", UDim2.new(0.72, 0, 1, 0), UDim2.new(0, 12, 0, 0), 17, WHITE, Enum.TextXAlignment.Center)
-local timerLabel = text(matchBar, "0:00", UDim2.new(0.25, 0, 1, 0), UDim2.new(0.74, 0, 0, 0), 20, ORANGE, Enum.TextXAlignment.Center)
+-- Información mínima de partida: no tapa la arena.
+local matchBar = panel(gui, UDim2.fromOffset(430, 52), UDim2.new(0.5, -215, 0, 18), DARK, 0.12)
+stroke(matchBar, CYAN, 0.34, 1.3)
+local scoreLabel = label(matchBar, "CALENTAMIENTO", UDim2.new(0.73, 0, 1, 0), UDim2.new(0, 10, 0, 0), 15, WHITE, Enum.TextXAlignment.Center)
+local timerLabel = label(matchBar, "0:00", UDim2.new(0.23, 0, 1, 0), UDim2.new(0.75, 0, 0, 0), 18, ORANGE, Enum.TextXAlignment.Center)
 
-local killBox = Instance.new("Frame")
-killBox.AnchorPoint = Vector2.new(1, 0)
-killBox.Position = UDim2.new(1, -18, 0, 82)
-killBox.Size = UDim2.fromOffset(310, 140)
-killBox.BackgroundTransparency = 1
-killBox.Parent = gui
-local killLayout = Instance.new("UIListLayout")
-killLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
-killLayout.Padding = UDim.new(0, 5)
-killLayout.Parent = killBox
-
-local health = panel(gui, UDim2.fromOffset(240, 34), UDim2.new(0, 24, 1, -52), Color3.fromRGB(17, 20, 31), 0.08)
-health.AnchorPoint = Vector2.new(0, 1)
+-- Vida arriba a la izquierda para dejar libre el joystick inferior.
+local health = panel(gui, UDim2.fromOffset(190, 30), UDim2.new(0, 22, 0, 132), Color3.fromRGB(17, 20, 31), 0.10)
 local healthFill = Instance.new("Frame")
 healthFill.Size = UDim2.fromScale(1, 1)
 healthFill.BackgroundColor3 = CYAN
 healthFill.BorderSizePixel = 0
 healthFill.Parent = health
 corner(healthFill, 99)
-local healthText = text(health, "100 HP", UDim2.fromScale(1, 1), UDim2.new(), 14, WHITE, Enum.TextXAlignment.Center)
+local healthText = label(health, "100 HP", UDim2.fromScale(1, 1), UDim2.new(), 13, WHITE, Enum.TextXAlignment.Center)
 healthText.ZIndex = 3
 
-local ammo = panel(gui, UDim2.fromOffset(220, 70), UDim2.new(1, -24, 1, -24), DARK, 0.10)
-ammo.AnchorPoint = Vector2.new(1, 1)
-stroke(ammo, MAGENTA, 0.24, 1.5)
-local weaponText = text(ammo, "RIFLE", UDim2.new(1, -16, 0, 25), UDim2.new(0, 8, 0, 7), 12, MUTED, Enum.TextXAlignment.Center)
-local ammoText = text(ammo, "30 / 30", UDim2.new(1, -16, 0, 32), UDim2.new(0, 8, 0, 32), 22, WHITE, Enum.TextXAlignment.Center)
+-- Munición abajo al centro: separada de todos los botones táctiles.
+local ammo = panel(gui, UDim2.fromOffset(190, 58), UDim2.new(0.5, -95, 1, -20), DARK, 0.10)
+ammo.AnchorPoint = Vector2.new(0, 1)
+stroke(ammo, MAGENTA, 0.30, 1.3)
+local weaponText = label(ammo, "RIFLE DE TINTA", UDim2.new(1, -12, 0, 22), UDim2.new(0, 6, 0, 5), 11, MUTED, Enum.TextXAlignment.Center)
+local ammoText = label(ammo, "30 / 30", UDim2.new(1, -12, 0, 28), UDim2.new(0, 6, 0, 27), 20, WHITE, Enum.TextXAlignment.Center)
 
+local killBox = Instance.new("Frame")
+killBox.AnchorPoint = Vector2.new(1, 0)
+killBox.Position = UDim2.new(1, -18, 0, 80)
+killBox.Size = UDim2.fromOffset(280, 116)
+killBox.BackgroundTransparency = 1
+killBox.Parent = gui
+local killLayout = Instance.new("UIListLayout")
+killLayout.HorizontalAlignment = Enum.HorizontalAlignment.Right
+killLayout.Padding = UDim.new(0, 4)
+killLayout.Parent = killBox
+
+-- Mira central.
 local crosshair = Instance.new("Frame")
 crosshair.AnchorPoint = Vector2.new(0.5, 0.5)
 crosshair.Position = UDim2.fromScale(0.5, 0.5)
@@ -128,34 +132,31 @@ for _, offset in ipairs({Vector2.new(0, -12), Vector2.new(0, 12), Vector2.new(-1
     table.insert(crossArms, arm)
 end
 
-local touch = Instance.new("Frame")
-touch.AnchorPoint = Vector2.new(1, 1)
-touch.Position = UDim2.new(1, -18, 1, -92)
-touch.Size = UDim2.fromOffset(250, 185)
-touch.BackgroundTransparency = 1
-touch.Parent = gui
-
-local function touchButton(value, position, size, color)
-    local b = Instance.new("TextButton")
-    b.AnchorPoint = Vector2.new(1, 1)
-    b.Position = position
-    b.Size = UDim2.fromOffset(size, size)
-    b.BackgroundColor3 = color
-    b.BackgroundTransparency = 0.12
-    b.BorderSizePixel = 0
-    b.Text = value
-    b.TextColor3 = WHITE
-    b.Font = Enum.Font.GothamBlack
-    b.TextScaled = true
-    b.Parent = touch
-    corner(b, 99)
-    stroke(b, WHITE, 0.55, 1.5)
-    return b
+-- Controles táctiles de arma: una sola fila, sin símbolos que puedan renderizar como cuadrados.
+local function touchButton(textValue, color, rightOffset, size)
+    local button = Instance.new("TextButton")
+    button.Name = "Touch" .. textValue
+    button.AnchorPoint = Vector2.new(1, 1)
+    button.Position = UDim2.new(1, -rightOffset, 1, -24)
+    button.Size = UDim2.fromOffset(size, size)
+    button.BackgroundColor3 = color
+    button.BackgroundTransparency = 0.18
+    button.BorderSizePixel = 0
+    button.Text = textValue
+    button.TextColor3 = WHITE
+    button.Font = Enum.Font.GothamBlack
+    button.TextScaled = true
+    button.AutoButtonColor = true
+    button.Visible = false
+    button.Parent = gui
+    corner(button, 99)
+    stroke(button, WHITE, 0.62, 1.2)
+    return button
 end
 
-local fireButton = touchButton("FUEGO", UDim2.new(1, 0, 1, 0), 108, MAGENTA)
-local reloadButton = touchButton("R", UDim2.new(0.52, 0, 0.58, 0), 64, CYAN)
-local nextButton = touchButton("↻", UDim2.new(0.58, 0, 1, 0), 58, ORANGE)
+local fireButton = touchButton("FUEGO", MAGENTA, 24, 100)
+local reloadButton = touchButton("REC", CYAN, 136, 62)
+local nextButton = touchButton("ARMA", ORANGE, 208, 62)
 
 local currentWeapon = "InkRifle"
 local inventory = {InkRifle = 1}
@@ -170,11 +171,14 @@ end
 local function setVisible()
     local enabled = isCombat()
     matchBar.Visible = enabled
-    killBox.Visible = enabled
     health.Visible = enabled
     ammo.Visible = enabled
+    killBox.Visible = enabled
     crosshair.Visible = enabled
-    touch.Visible = enabled and UserInputService.TouchEnabled
+    local touchEnabled = enabled and UserInputService.TouchEnabled
+    fireButton.Visible = touchEnabled
+    reloadButton.Visible = touchEnabled
+    nextButton.Visible = touchEnabled
     if not enabled then firing = false end
 end
 
@@ -182,13 +186,16 @@ local function fireOnce()
     if not isCombat() then return end
     camera = workspace.CurrentCamera or camera
     if not camera then return end
+
     local definition = Weapons[currentWeapon] or Weapons.InkRifle
     local now = os.clock()
     if now - lastLocalShot < (definition.FireInterval or 0.12) * 0.92 then return end
     lastLocalShot = now
+
     local character = player.Character
     local head = character and character:FindFirstChild("Head")
     if not head then return end
+
     local center = camera.ViewportSize / 2
     local ray = camera:ViewportPointToRay(center.X, center.Y)
     fireRemote:FireServer(head.Position, ray.Direction.Unit)
@@ -237,19 +244,22 @@ end)
 fireButton.InputEnded:Connect(function(input)
     if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then stopFire() end
 end)
-reloadButton.Activated:Connect(function() if isCombat() then reloadRemote:FireServer() end end)
+reloadButton.Activated:Connect(function()
+    if isCombat() then reloadRemote:FireServer() end
+end)
 nextButton.Activated:Connect(nextWeapon)
 
 UserInputService.InputBegan:Connect(function(input, processed)
     if processed or not isCombat() then return end
     if input.UserInputType == Enum.UserInputType.MouseButton1 or input.KeyCode == Enum.KeyCode.ButtonR2 then startFire() end
     if input.KeyCode == Enum.KeyCode.R or input.KeyCode == Enum.KeyCode.ButtonX then reloadRemote:FireServer() end
-    local keys = {
+
+    local slots = {
         [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3,
         [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6,
         [Enum.KeyCode.Seven] = 7, [Enum.KeyCode.Eight] = 8, [Enum.KeyCode.Nine] = 9,
     }
-    local slot = keys[input.KeyCode]
+    local slot = slots[input.KeyCode]
     if slot then equipWeapon(weaponOrder[slot]) end
 end)
 
@@ -263,7 +273,7 @@ local function bindHealth(character)
     local function update()
         local ratio = humanoid.MaxHealth > 0 and humanoid.Health / humanoid.MaxHealth or 0
         healthFill.Size = UDim2.fromScale(math.clamp(ratio, 0, 1), 1)
-        healthFill.BackgroundColor3 = ratio < 0.3 and Color3.fromRGB(255, 70, 80) or CYAN
+        healthFill.BackgroundColor3 = ratio < 0.30 and Color3.fromRGB(255, 70, 80) or CYAN
         healthText.Text = string.format("%d HP", math.max(0, math.floor(humanoid.Health + 0.5)))
     end
     humanoid.HealthChanged:Connect(update)
@@ -277,7 +287,7 @@ ammoState.OnClientEvent:Connect(function(data)
     if type(data) ~= "table" then return end
     currentWeapon = data.WeaponId or currentWeapon
     weaponText.Text = string.upper(data.DisplayName or currentWeapon)
-    ammoText.Text = data.Reloading and "RECARGANDO..." or string.format("%d / %d", data.Ammo or 0, data.Magazine or 0)
+    ammoText.Text = data.Reloading and "RECARGANDO" or string.format("%d / %d", data.Ammo or 0, data.Magazine or 0)
 end)
 
 profileState.OnClientEvent:Connect(function(newProfile)
@@ -299,30 +309,38 @@ hitConfirm.OnClientEvent:Connect(function(headshot)
 end)
 
 killFeed.OnClientEvent:Connect(function(killer, victim, headshot)
-    local l = text(killBox, string.format("%s  ›  %s%s", tostring(killer), tostring(victim), headshot and "  ★" or ""), UDim2.new(1, 0, 0, 28), UDim2.new(), 12, headshot and ORANGE or WHITE, Enum.TextXAlignment.Center)
-    l.BackgroundColor3 = DARK
-    l.BackgroundTransparency = 0.15
-    corner(l, 7)
-    Debris:AddItem(l, 3.5)
+    local entry = label(
+        killBox,
+        string.format("%s  >  %s%s", tostring(killer), tostring(victim), headshot and "  ★" or ""),
+        UDim2.new(1, 0, 0, 26),
+        UDim2.new(),
+        11,
+        headshot and ORANGE or WHITE,
+        Enum.TextXAlignment.Center
+    )
+    entry.BackgroundColor3 = DARK
+    entry.BackgroundTransparency = 0.16
+    corner(entry, 7)
+    Debris:AddItem(entry, 3.4)
 end)
 
 shotFX.OnClientEvent:Connect(function(origin, destination, color)
     if typeof(origin) ~= "Vector3" or typeof(destination) ~= "Vector3" then return end
     local distance = (destination - origin).Magnitude
     if distance <= 0 then return end
-    local beam = Instance.new("Part")
-    beam.Name = "TintaTracer"
-    beam.Anchored = true
-    beam.CanCollide = false
-    beam.CanTouch = false
-    beam.CanQuery = false
-    beam.Material = Enum.Material.Neon
-    beam.Color = typeof(color) == "Color3" and color or CYAN
-    beam.Transparency = 0.20
-    beam.Size = Vector3.new(0.07, 0.07, distance)
-    beam.CFrame = CFrame.lookAt((origin + destination) / 2, destination)
-    beam.Parent = workspace
-    Debris:AddItem(beam, 0.065)
+    local tracer = Instance.new("Part")
+    tracer.Name = "TintaTracer"
+    tracer.Anchored = true
+    tracer.CanCollide = false
+    tracer.CanTouch = false
+    tracer.CanQuery = false
+    tracer.Material = Enum.Material.Neon
+    tracer.Color = typeof(color) == "Color3" and color or CYAN
+    tracer.Transparency = 0.20
+    tracer.Size = Vector3.new(0.07, 0.07, distance)
+    tracer.CFrame = CFrame.lookAt((origin + destination) / 2, destination)
+    tracer.Parent = workspace
+    Debris:AddItem(tracer, 0.065)
 end)
 
 local function timerText(seconds)
@@ -348,20 +366,23 @@ player:GetAttributeChangedSignal("InShooterMatch"):Connect(setVisible)
 player:GetAttributeChangedSignal("ADSActive"):Connect(function()
     local ads = player:GetAttribute("ADSActive") == true
     local distance = ads and 8 or 12
-    for index, offset in ipairs({Vector2.new(0, -distance), Vector2.new(0, distance), Vector2.new(-distance, 0), Vector2.new(distance, 0)}) do
+    local offsets = {Vector2.new(0, -distance), Vector2.new(0, distance), Vector2.new(-distance, 0), Vector2.new(distance, 0)}
+    for index, offset in ipairs(offsets) do
         local arm = crossArms[index]
         if arm then arm.Position = UDim2.new(0.5, offset.X, 0.5, offset.Y) end
     end
 end)
 
-local ok, snapshot = pcall(function() return getSnapshot:InvokeServer() end)
+local ok, snapshot = pcall(function()
+    return getSnapshot:InvokeServer()
+end)
 if ok and type(snapshot) == "table" then
-    local p = snapshot.Profile or {}
-    local c = snapshot.Config or {}
-    inventory = p.Inventory or inventory
-    currentWeapon = p.SelectedWeapon or currentWeapon
-    weaponOrder = c.Shooter and c.Shooter.WeaponOrder or weaponOrder
+    local profile = snapshot.Profile or {}
+    local config = snapshot.Config or {}
+    inventory = profile.Inventory or inventory
+    currentWeapon = profile.SelectedWeapon or currentWeapon
+    weaponOrder = config.Shooter and config.Shooter.WeaponOrder or weaponOrder
 end
 
 setVisible()
-print("[TintaFinal] HUD compacto de combate cargado.")
+print("[TintaFinal] HUD móvil limpio: fuego, recarga y cambio de arma separados.")
