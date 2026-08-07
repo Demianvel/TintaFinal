@@ -131,10 +131,15 @@ end
 ContextActionService:BindAction("TintaSprint", sprintAction, false, Enum.KeyCode.LeftShift, Enum.KeyCode.ButtonL3)
 ContextActionService:BindAction("TintaAim", aimAction, false, Enum.UserInputType.MouseButton2, Enum.KeyCode.ButtonL2)
 
-sprintButton.MouseButton1Down:Connect(function() setSprint(true) end)
-sprintButton.MouseButton1Up:Connect(function() setSprint(false) end)
-sprintButton.TouchLongPress:Connect(function(_, state)
-    if state == Enum.UserInputState.Begin then setSprint(true) else setSprint(false) end
+sprintButton.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        setSprint(true)
+    end
+end)
+sprintButton.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.Touch or input.UserInputType == Enum.UserInputType.MouseButton1 then
+        setSprint(false)
+    end
 end)
 aimButton.Activated:Connect(function() setAim(not aiming) end)
 
