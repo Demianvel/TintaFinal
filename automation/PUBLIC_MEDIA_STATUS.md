@@ -2,7 +2,8 @@
 
 - Estado: ERROR
 - Universe ID: 8973271699
+- Idioma usado: NO_DETECTADO
 - Nueva imageId: NO_GENERADA
 - River imageId objetivo: 80353689172158
 - Scope legacy requerido: legacy-universe:manage
-- Detalle: No se pudo subir la portada pública: [{"field": "file", "statusCode": 400, "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"}, {"field": "imageFile", "statusCode": 400, "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"}, {"field": "image", "statusCode": 400, "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"}]
+- Detalle: Roblox aceptó la carga pero no apareció una nueva imageId: {'data': [{'assetTypeId': 1, 'assetType': 'Image', 'imageId': 80353689172158, 'videoHash': None, 'videoTitle': None, 'approved': True, 'altText': None}]}
