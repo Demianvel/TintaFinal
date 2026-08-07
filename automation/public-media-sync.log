@@ -1,1 +1,9 @@
-Roblox rechazó la carga de la portada pública: HTTP 403 - {"errors":[{"code":0,"message":"Forbidden"}]}. Los endpoints legacy de miniatura pública requieren el scope legacy-universe:manage en la API Key.
+Traceback (most recent call last):
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_public_game_media.py", line 247, in <module>
+    main()
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_public_game_media.py", line 215, in main
+    upload_result = upload_thumbnail()
+                    ^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_public_game_media.py", line 123, in upload_thumbnail
+    raise RuntimeError("No se pudo subir la portada pública: " + json.dumps(attempts, ensure_ascii=False))
+RuntimeError: No se pudo subir la portada pública: [{"field": "file", "statusCode": 400, "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"}, {"field": "imageFile", "statusCode": 400, "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"}, {"field": "image", "statusCode": 400, "body": "{\"errors\":[{\"code\":22,\"message\":\"Invalid language code\"}]}"}]

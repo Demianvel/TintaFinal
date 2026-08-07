@@ -1,5 +1,4 @@
 {
-  "mode": "BLOQUEADO_POR_PERMISO",
-  "requiredScope": "legacy-universe:manage",
-  "error": "Roblox rechazó la carga de la portada pública: HTTP 403 - {\"errors\":[{\"code\":0,\"message\":\"Forbidden\"}]}. Los endpoints legacy de miniatura pública requieren el scope legacy-universe:manage en la API Key."
+  "mode": "ERROR",
+  "error": "No se pudo subir la portada pública: [{\"field\": \"file\", \"statusCode\": 400, \"body\": \"{\\\"errors\\\":[{\\\"code\\\":22,\\\"message\\\":\\\"Invalid language code\\\"}]}\"}, {\"field\": \"imageFile\", \"statusCode\": 400, \"body\": \"{\\\"errors\\\":[{\\\"code\\\":22,\\\"message\\\":\\\"Invalid language code\\\"}]}\"}, {\"field\": \"image\", \"statusCode\": 400, \"body\": \"{\\\"errors\\\":[{\\\"code\\\":22,\\\"message\\\":\\\"Invalid language code\\\"}]}\"}]"
 }
