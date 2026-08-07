@@ -1,6 +1,9 @@
-Duplicado eliminado: 3075c1f1-79a3-442f-a24c-8a3bc0d37c83
-Duplicado eliminado: 4841b13d-ffc3-4d1d-baf8-ab29fb146125
-Duplicado eliminado: 9790e7dc-edd6-4709-8c48-8d198b8d27d5
-Duplicado eliminado: b6d3e7f5-99b3-44ff-815a-8ac8563d2f1b
-Duplicado eliminado: ba795341-cce3-45c2-b4a1-9c7b9145b6b9
-Set aprobado existente reutilizado: 5 miniaturas.
+Traceback (most recent call last):
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_universe_thumbnails.py", line 224, in <module>
+    main()
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_universe_thumbnails.py", line 185, in main
+    deleted = cleanup_known_duplicates()
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_universe_thumbnails.py", line 89, in cleanup_known_duplicates
+    raise RuntimeError(
+RuntimeError: No se pudo eliminar miniatura duplicada 3075c1f1-79a3-442f-a24c-8a3bc0d37c83: HTTP 403 - "invalid thumbnail id"
