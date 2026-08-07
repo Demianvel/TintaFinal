@@ -1,9 +1,10 @@
 # Portada pública de Tinta Final
 
-- Estado: ERROR
+- Estado: PENDIENTE_ROBLOX
 - Universe ID: 8973271699
-- Idioma usado: NO_DETECTADO
+- Idioma usado: en
 - Nueva imageId: NO_GENERADA
 - River imageId objetivo: 80353689172158
 - Scope legacy requerido: legacy-universe:manage
-- Detalle: Roblox aceptó la carga pero no apareció una nueva imageId: {'data': [{'assetTypeId': 1, 'assetType': 'Image', 'imageId': 80353689172158, 'videoHash': None, 'videoTitle': None, 'approved': True, 'altText': None}]}
+- Actualizado UTC: 2026-08-07T18:24:27.016106+00:00
+- Detalle: Roblox aceptó la carga pero todavía no publicó una nueva imageId. No se volverá a subir otra copia.
