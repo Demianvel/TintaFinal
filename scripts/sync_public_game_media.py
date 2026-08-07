@@ -101,10 +101,11 @@ def _add_language_candidate(output: list[str], value: object) -> None:
     value = value.strip().lower().replace("_", "-")
     if not value:
         return
+    # The legacy endpoint accepts language codes (es/en/pt...), not locale codes
+    # such as es-es or es-mx. Keep only the base language discovered from Roblox.
     short = value.split("-", 1)[0]
-    for candidate in (short, value):
-        if candidate and candidate not in output:
-            output.append(candidate)
+    if short and short not in output:
+        output.append(short)
 
 
 def _walk_language_payload(value: object, output: list[str]) -> None:
@@ -204,7 +205,12 @@ def upload_thumbnail(candidates: list[str]) -> dict:
                 }
             if response.status_code in (401, 403):
                 raise legacy_permission_error("la carga de la portada pública", response)
-            if response.status_code == 400 and "invalid language code" in response.text.lower():
+            text = response.text.lower()
+            if response.status_code == 400 and "invalid language code" in text:
+                break
+            if response.status_code == 400 and "can't update translations for source language" in text:
+                # Roblox identified this as the source language. Skip directly to
+                # the next base language instead of retrying alternate form fields.
                 break
             if response.status_code not in (400, 404, 415, 422):
                 break
