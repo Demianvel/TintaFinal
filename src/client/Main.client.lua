@@ -8,7 +8,6 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local Visual = require(ReplicatedStorage.Shared:WaitForChild("VisualConfig"))
 
 local GetSnapshot = remotes:WaitForChild("GetSnapshot")
-local CastVote = remotes:WaitForChild("CastVote")
 local ShopPurchase = remotes:WaitForChild("ShopPurchase")
 local Spin = remotes:WaitForChild("Spin")
 local ToggleAFK = remotes:WaitForChild("ToggleAFK")
@@ -20,462 +19,425 @@ local ProfileState = remotes:WaitForChild("ProfileState")
 local Victory = remotes:WaitForChild("Victory")
 
 local CYAN = Color3.fromRGB(0, 226, 239)
-local MAGENTA = Color3.fromRGB(255, 45, 145)
-local ORANGE = Color3.fromRGB(255, 145, 25)
-local DARK = Color3.fromRGB(7, 9, 16)
-local PANEL = Color3.fromRGB(13, 16, 27)
+local MAGENTA = Color3.fromRGB(255, 22, 142)
+local ORANGE = Color3.fromRGB(255, 132, 21)
+local DARK = Color3.fromRGB(5, 7, 14)
+local PANEL = Color3.fromRGB(10, 13, 24)
 local WHITE = Color3.fromRGB(248, 250, 255)
-local MUTED = Color3.fromRGB(172, 188, 218)
+local MUTED = Color3.fromRGB(170, 185, 215)
 
-local profile
-local config
-local currentState
-local currentPanel
-
-local gui = Instance.new("ScreenGui")
-gui.Name = "TintaFinalCompetitiveUI"
-gui.ResetOnSpawn = false
-gui.IgnoreGuiInset = true
-gui.DisplayOrder = 20
-gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-gui.Parent = player:WaitForChild("PlayerGui")
+local profile = {}
+local config = {}
+local currentState = {}
+local panelMode = nil
 
 local function asset(id)
     id = tonumber(id) or 0
     return id > 0 and ("rbxassetid://" .. tostring(id)) or ""
 end
 
+local gui = Instance.new("ScreenGui")
+gui.Name = "TintaFinalCompetitiveUI"
+gui.IgnoreGuiInset = true
+gui.ResetOnSpawn = false
+gui.DisplayOrder = 20
+gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+gui.Parent = player:WaitForChild("PlayerGui")
+
 local scale = Instance.new("UIScale")
 scale.Parent = gui
-local function updateScale()
+local function refreshScale()
     local camera = workspace.CurrentCamera
     local viewport = camera and camera.ViewportSize or Vector2.new(1280, 720)
-    scale.Scale = math.clamp(math.min(viewport.X / 1280, viewport.Y / 720), 0.64, 1.08)
+    scale.Scale = math.clamp(math.min(viewport.X / 1280, viewport.Y / 720), 0.72, 1.08)
 end
-updateScale()
-if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(updateScale) end
+refreshScale()
+if workspace.CurrentCamera then
+    workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(refreshScale)
+end
 
 local function corner(object, radius)
     local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0, radius or 10)
+    c.CornerRadius = UDim.new(0, radius or 12)
     c.Parent = object
 end
 
 local function stroke(object, color, transparency, thickness)
     local s = Instance.new("UIStroke")
     s.Color = color or CYAN
-    s.Transparency = transparency or 0.3
+    s.Transparency = transparency or 0.25
     s.Thickness = thickness or 1.5
     s.Parent = object
 end
 
-local function frame(parent, size, position, color, transparency)
-    local f = Instance.new("Frame")
-    f.Size = size
-    f.Position = position or UDim2.new()
-    f.BackgroundColor3 = color or PANEL
-    f.BackgroundTransparency = transparency or 0.08
-    f.BorderSizePixel = 0
-    f.Parent = parent
-    corner(f, 12)
-    return f
+local function makeLabel(parent, value, size, position, fontSize, color, align)
+    local label = Instance.new("TextLabel")
+    label.Size = size
+    label.Position = position or UDim2.new()
+    label.BackgroundTransparency = 1
+    label.Text = value
+    label.TextColor3 = color or WHITE
+    label.Font = Enum.Font.GothamBold
+    label.TextSize = fontSize or 16
+    label.TextWrapped = true
+    label.TextXAlignment = align or Enum.TextXAlignment.Left
+    label.Parent = parent
+    return label
 end
 
-local function label(parent, text, size, position, textSize, color, align)
-    local l = Instance.new("TextLabel")
-    l.Size = size
-    l.Position = position or UDim2.new()
-    l.BackgroundTransparency = 1
-    l.Font = Enum.Font.GothamBold
-    l.Text = text
-    l.TextColor3 = color or WHITE
-    l.TextSize = textSize or 16
-    l.TextWrapped = true
-    l.TextXAlignment = align or Enum.TextXAlignment.Left
-    l.Parent = parent
-    return l
-end
-
-local function button(parent, text, size, color)
+local function makeButton(parent, value, size, color)
     local b = Instance.new("TextButton")
     b.Size = size
-    b.BackgroundColor3 = color or CYAN
+    b.BackgroundColor3 = color or MAGENTA
     b.BackgroundTransparency = 0.08
     b.BorderSizePixel = 0
-    b.Font = Enum.Font.GothamBlack
-    b.Text = text
+    b.Text = value
     b.TextColor3 = WHITE
+    b.Font = Enum.Font.GothamBlack
     b.TextScaled = true
     b.AutoButtonColor = true
     b.Parent = parent
-    corner(b, 9)
+    corner(b, 12)
+    stroke(b, WHITE, 0.72, 1)
     return b
 end
 
-local backdrop = Instance.new("Frame")
-backdrop.Size = UDim2.fromScale(1, 1)
-backdrop.BackgroundColor3 = DARK
-backdrop.BackgroundTransparency = 0.22
-backdrop.BorderSizePixel = 0
-backdrop.Parent = gui
+local root = Instance.new("Frame")
+root.Name = "LobbyRoot"
+root.Size = UDim2.fromScale(1, 1)
+root.BackgroundColor3 = DARK
+root.BorderSizePixel = 0
+root.Parent = gui
 
-local backgroundImage = Instance.new("ImageLabel")
-backgroundImage.Size = UDim2.fromScale(1, 1)
-backgroundImage.BackgroundTransparency = 1
-backgroundImage.Image = asset(Visual.Assets.Lobby)
-backgroundImage.ImageTransparency = backgroundImage.Image == "" and 1 or 0.35
-backgroundImage.ScaleType = Enum.ScaleType.Crop
-backgroundImage.Parent = backdrop
+local art = Instance.new("ImageLabel")
+art.Name = "LobbyArt"
+art.Size = UDim2.fromScale(1, 1)
+art.BackgroundTransparency = 1
+art.Image = asset(Visual.Assets.Lobby)
+art.ScaleType = Enum.ScaleType.Crop
+art.Parent = root
 
-local shade = Instance.new("Frame")
-shade.Size = UDim2.fromScale(1, 1)
-shade.BackgroundColor3 = Color3.new(0,0,0)
-shade.BackgroundTransparency = 0.48
-shade.BorderSizePixel = 0
-shade.Parent = backdrop
+local vignette = Instance.new("Frame")
+vignette.Size = UDim2.fromScale(1, 1)
+vignette.BackgroundColor3 = Color3.new(0, 0, 0)
+vignette.BackgroundTransparency = art.Image == "" and 0.12 or 0.47
+vignette.BorderSizePixel = 0
+vignette.Parent = root
 
-local top = frame(gui, UDim2.new(1, -28, 0, 72), UDim2.new(0, 14, 0, 12), Color3.fromRGB(5,7,13), 0.08)
+local top = Instance.new("Frame")
+top.Size = UDim2.new(1, -36, 0, 74)
+top.Position = UDim2.new(0, 18, 0, 14)
+top.BackgroundColor3 = DARK
+top.BackgroundTransparency = 0.10
+top.BorderSizePixel = 0
+top.Parent = root
+corner(top, 16)
 stroke(top, MAGENTA, 0.18, 2)
-local title = label(top, "TINTA FINAL", UDim2.new(0, 260, 1, 0), UDim2.new(0, 18, 0, 0), 27, WHITE)
-local subtitle = label(top, "COMPETITIVE ARENA", UDim2.new(0, 240, 0, 22), UDim2.new(0, 185, 0, 40), 11, CYAN)
-local moneyLabel = label(top, "TM 0", UDim2.new(0, 190, 1, 0), UDim2.new(0.47, 0, 0, 0), 17, ORANGE, Enum.TextXAlignment.Center)
-local ratingLabel = label(top, "RATING 1000", UDim2.new(0, 175, 1, 0), UDim2.new(0.64, 0, 0, 0), 16, CYAN, Enum.TextXAlignment.Center)
-local rankLabel = label(top, "BRONZE", UDim2.new(0, 165, 1, 0), UDim2.new(0.80, 0, 0, 0), 16, MAGENTA, Enum.TextXAlignment.Center)
 
-local left = frame(gui, UDim2.new(0, 205, 0, 445), UDim2.new(0, 16, 0.5, -205), Color3.fromRGB(7,9,16), 0.05)
-stroke(left, CYAN, 0.28, 2)
-local profileCard = frame(left, UDim2.new(1, -18, 0, 82), UDim2.new(0, 9, 0, 9), Color3.fromRGB(17,21,34), 0.02)
-local playerName = label(profileCard, player.DisplayName, UDim2.new(1,-16,0,31), UDim2.new(0,8,0,8), 17, WHITE)
-local playerMeta = label(profileCard, "NIVEL 1 · 0 VICTORIAS", UDim2.new(1,-16,0,26), UDim2.new(0,8,0,43), 11, MUTED)
+local playerLabel = makeLabel(top, player.DisplayName, UDim2.new(0.30, 0, 0, 32), UDim2.new(0, 18, 0, 9), 19, WHITE)
+local playerMeta = makeLabel(top, "NIVEL 1 · 0 VICTORIAS", UDim2.new(0.30, 0, 0, 24), UDim2.new(0, 18, 0, 41), 11, CYAN)
+local moneyLabel = makeLabel(top, "TM 0", UDim2.new(0.20, 0, 1, 0), UDim2.new(0.44, 0, 0, 0), 17, CYAN, Enum.TextXAlignment.Center)
+local ratingLabel = makeLabel(top, "RATING 1000", UDim2.new(0.18, 0, 1, 0), UDim2.new(0.62, 0, 0, 0), 16, WHITE, Enum.TextXAlignment.Center)
+local rankLabel = makeLabel(top, "SILVER", UDim2.new(0.17, 0, 1, 0), UDim2.new(0.80, 0, 0, 0), 16, MAGENTA, Enum.TextXAlignment.Center)
 
-local menuHolder = Instance.new("Frame")
-menuHolder.Size = UDim2.new(1,-18,1,-106)
-menuHolder.Position = UDim2.new(0,9,0,98)
-menuHolder.BackgroundTransparency = 1
-menuHolder.Parent = left
+local menu = Instance.new("Frame")
+menu.Size = UDim2.fromOffset(245, 405)
+menu.Position = UDim2.new(0, 24, 0.5, -165)
+menu.BackgroundTransparency = 1
+menu.Parent = root
 local menuLayout = Instance.new("UIListLayout")
-menuLayout.Padding = UDim.new(0,7)
-menuLayout.Parent = menuHolder
+menuLayout.Padding = UDim.new(0, 10)
+menuLayout.Parent = menu
 
-local playButton = button(menuHolder, "JUGAR", UDim2.new(1,0,0,52), MAGENTA)
-local arsenalButton = button(menuHolder, "ARSENAL", UDim2.new(1,0,0,46), CYAN)
-local shopButton = button(menuHolder, "TIENDA", UDim2.new(1,0,0,46), ORANGE)
-local rankingButton = button(menuHolder, "RANKING", UDim2.new(1,0,0,46), Color3.fromRGB(84,75,205))
-local donationButton = button(menuHolder, "DONACIONES", UDim2.new(1,0,0,46), Color3.fromRGB(210,36,120))
-local personalizeButton = button(menuHolder, "PERSONALIZAR", UDim2.new(1,0,0,46), Color3.fromRGB(25,155,125))
-local rewardsButton = button(menuHolder, "RECOMPENSAS", UDim2.new(1,0,0,46), Color3.fromRGB(95,105,125))
+local playButton = makeButton(menu, "▶  JUGAR", UDim2.new(1, 0, 0, 70), MAGENTA)
+local arsenalButton = makeButton(menu, "ARSENAL", UDim2.new(1, 0, 0, 58), CYAN)
+local shopButton = makeButton(menu, "TIENDA", UDim2.new(1, 0, 0, 58), ORANGE)
+local rankingButton = makeButton(menu, "RANKING", UDim2.new(1, 0, 0, 58), Color3.fromRGB(103, 65, 220))
+local rewardsButton = makeButton(menu, "RECOMPENSAS", UDim2.new(1, 0, 0, 58), Color3.fromRGB(40, 155, 125))
 
-local quick = frame(gui, UDim2.new(0, 340, 0, 225), UDim2.new(1, -360, 0.5, -78), Color3.fromRGB(7,9,16), 0.06)
-stroke(quick, MAGENTA, 0.14, 2)
-local quickTitle = label(quick, "LISTO PARA JUGAR", UDim2.new(1,-24,0,42), UDim2.new(0,12,0,14), 23, WHITE, Enum.TextXAlignment.Center)
-local modeLabel = label(quick, "10 VS 10 · CIAN VS MAGENTA", UDim2.new(1,-24,0,28), UDim2.new(0,12,0,62), 12, CYAN, Enum.TextXAlignment.Center)
-local statusLabel = label(quick, "EN COLA COMPETITIVA", UDim2.new(1,-24,0,28), UDim2.new(0,12,0,93), 12, MUTED, Enum.TextXAlignment.Center)
-local bigPlay = button(quick, "JUGAR AHORA", UDim2.new(1,-40,0,74), MAGENTA)
-bigPlay.Position = UDim2.new(0,20,0,132)
+local playCard = Instance.new("Frame")
+playCard.Size = UDim2.fromOffset(355, 238)
+playCard.Position = UDim2.new(1, -385, 0.5, -92)
+playCard.BackgroundColor3 = PANEL
+playCard.BackgroundTransparency = 0.08
+playCard.BorderSizePixel = 0
+playCard.Parent = root
+corner(playCard, 18)
+stroke(playCard, MAGENTA, 0.10, 2)
 
-local prize = frame(gui, UDim2.new(0, 720, 0, 86), UDim2.new(0.5, -360, 1, -105), Color3.fromRGB(8,10,18), 0.04)
-stroke(prize, ORANGE, 0.20, 2)
-label(prize, "PREMIOS DE TEMPORADA · TINTA MONEY", UDim2.new(1,0,0,28), UDim2.new(0,0,0,7), 15, WHITE, Enum.TextXAlignment.Center)
-label(prize, "🥇 300.000.000 TM     🥈 150.000.000 TM     🥉 100.000.000 TM", UDim2.new(1,0,0,40), UDim2.new(0,0,0,35), 18, ORANGE, Enum.TextXAlignment.Center)
+makeLabel(playCard, "LISTO PARA JUGAR", UDim2.new(1, -28, 0, 42), UDim2.new(0, 14, 0, 16), 24, WHITE, Enum.TextXAlignment.Center)
+local modeLabel = makeLabel(playCard, "PVP · MAPA AUTOMÁTICO", UDim2.new(1, -28, 0, 28), UDim2.new(0, 14, 0, 63), 13, CYAN, Enum.TextXAlignment.Center)
+local statusLabel = makeLabel(playCard, "CONECTANDO...", UDim2.new(1, -28, 0, 42), UDim2.new(0, 14, 0, 94), 12, MUTED, Enum.TextXAlignment.Center)
+local playNow = makeButton(playCard, "JUGAR AHORA", UDim2.new(1, -42, 0, 72), MAGENTA)
+playNow.Position = UDim2.new(0, 21, 0, 146)
 
-local panel = frame(gui, UDim2.new(0, 780, 0, 530), UDim2.new(0.5, -390, 0.5, -240), Color3.fromRGB(8,10,18), 0.02)
-panel.Visible = false
-stroke(panel, MAGENTA, 0.18, 2)
-local panelTitle = label(panel, "PANEL", UDim2.new(1,-80,0,58), UDim2.new(0,22,0,8), 25, WHITE)
-local closePanel = button(panel, "✕", UDim2.new(0,48,0,44), Color3.fromRGB(95,40,65))
-closePanel.Position = UDim2.new(1,-62,0,12)
+local season = Instance.new("Frame")
+season.Size = UDim2.new(0.58, 0, 0, 70)
+season.Position = UDim2.new(0.5, -290, 1, -88)
+season.BackgroundColor3 = DARK
+season.BackgroundTransparency = 0.10
+season.BorderSizePixel = 0
+season.Parent = root
+corner(season, 14)
+stroke(season, ORANGE, 0.25, 1.5)
+makeLabel(season, "TOP 3 TEMPORADA", UDim2.new(0.22, 0, 1, 0), UDim2.new(0, 12, 0, 0), 12, WHITE, Enum.TextXAlignment.Center)
+makeLabel(season, "1.º 300M TM   ·   2.º 150M TM   ·   3.º 100M TM", UDim2.new(0.74, 0, 1, 0), UDim2.new(0.24, 0, 0, 0), 15, ORANGE, Enum.TextXAlignment.Center)
 
-local content = Instance.new("ScrollingFrame")
-content.Size = UDim2.new(1,-36,1,-82)
-content.Position = UDim2.new(0,18,0,68)
-content.BackgroundTransparency = 1
-content.BorderSizePixel = 0
-content.ScrollBarThickness = 5
-content.ScrollBarImageColor3 = MAGENTA
-content.AutomaticCanvasSize = Enum.AutomaticSize.Y
-content.CanvasSize = UDim2.new()
-content.Parent = panel
-local contentLayout = Instance.new("UIListLayout")
-contentLayout.Padding = UDim.new(0,10)
-contentLayout.Parent = content
+local modal = Instance.new("Frame")
+modal.Size = UDim2.new(0.74, 0, 0.76, 0)
+modal.Position = UDim2.new(0.13, 0, 0.13, 0)
+modal.BackgroundColor3 = PANEL
+modal.BackgroundTransparency = 0.02
+modal.BorderSizePixel = 0
+modal.Visible = false
+modal.Parent = root
+corner(modal, 18)
+stroke(modal, MAGENTA, 0.08, 2)
 
-local votePanel = frame(gui, UDim2.new(0, 690, 0, 190), UDim2.new(0.5,-345,1,-215), Color3.fromRGB(8,10,18), 0.02)
-votePanel.Visible = false
-stroke(votePanel, CYAN, 0.15, 2)
-local voteTitle = label(votePanel, "VOTÁ EL PRÓXIMO MAPA", UDim2.new(1,-20,0,40), UDim2.new(0,10,0,5), 20, WHITE, Enum.TextXAlignment.Center)
-local voteHolder = Instance.new("Frame")
-voteHolder.Size = UDim2.new(1,-20,0,125)
-voteHolder.Position = UDim2.new(0,10,0,50)
-voteHolder.BackgroundTransparency = 1
-voteHolder.Parent = votePanel
-local voteLayout = Instance.new("UIListLayout")
-voteLayout.FillDirection = Enum.FillDirection.Horizontal
-voteLayout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-voteLayout.Padding = UDim.new(0,10)
-voteLayout.Parent = voteHolder
-local voteButtons = {}
-for i = 1, 3 do
-    local b = button(voteHolder, "MAPA", UDim2.new(0,215,1,0), i == 1 and CYAN or (i == 2 and MAGENTA or ORANGE))
-    voteButtons[i] = b
-    b.Activated:Connect(function()
-        local mapId = currentState and currentState.OfferedGames and currentState.OfferedGames[i]
-        if mapId then CastVote:InvokeServer(mapId) end
-    end)
-end
+local modalArt = Instance.new("ImageLabel")
+modalArt.Size = UDim2.fromScale(1, 1)
+modalArt.BackgroundTransparency = 1
+modalArt.ImageTransparency = 0.82
+modalArt.ScaleType = Enum.ScaleType.Crop
+modalArt.Parent = modal
+corner(modalArt, 18)
 
-local toast = label(gui, "", UDim2.new(0,500,0,52), UDim2.new(0.5,-250,1,-68), 15, WHITE, Enum.TextXAlignment.Center)
-toast.BackgroundColor3 = Color3.fromRGB(8,10,18)
-toast.BackgroundTransparency = 0.03
+local modalShade = Instance.new("Frame")
+modalShade.Size = UDim2.fromScale(1, 1)
+modalShade.BackgroundColor3 = Color3.new(0, 0, 0)
+modalShade.BackgroundTransparency = 0.22
+modalShade.BorderSizePixel = 0
+modalShade.Parent = modal
+corner(modalShade, 18)
+
+local modalTitle = makeLabel(modal, "TINTA FINAL", UDim2.new(1, -90, 0, 58), UDim2.new(0, 22, 0, 8), 25, WHITE)
+local closeModal = makeButton(modal, "✕", UDim2.fromOffset(50, 46), Color3.fromRGB(75, 28, 55))
+closeModal.Position = UDim2.new(1, -64, 0, 12)
+
+local list = Instance.new("ScrollingFrame")
+list.Size = UDim2.new(1, -40, 1, -86)
+list.Position = UDim2.new(0, 20, 0, 72)
+list.BackgroundTransparency = 1
+list.BorderSizePixel = 0
+list.ScrollBarThickness = 5
+list.ScrollBarImageColor3 = MAGENTA
+list.AutomaticCanvasSize = Enum.AutomaticSize.Y
+list.CanvasSize = UDim2.new()
+list.Parent = modal
+local listLayout = Instance.new("UIListLayout")
+listLayout.Padding = UDim.new(0, 9)
+listLayout.Parent = list
+
+local toast = makeLabel(gui, "", UDim2.fromOffset(520, 48), UDim2.new(0.5, -260, 1, -62), 14, WHITE, Enum.TextXAlignment.Center)
+toast.BackgroundColor3 = DARK
+toast.BackgroundTransparency = 0.05
 toast.Visible = false
-corner(toast,10)
-stroke(toast,CYAN,0.35,1)
+corner(toast, 10)
+stroke(toast, CYAN, 0.28, 1)
 local toastToken = 0
-local function showToast(text)
+local function showToast(message)
     toastToken += 1
     local token = toastToken
-    toast.Text = tostring(text or "")
+    toast.Text = tostring(message or "")
     toast.TextTransparency = 0
     toast.Visible = true
-    task.delay(2.6, function()
+    task.delay(2.4, function()
         if token ~= toastToken then return end
-        TweenService:Create(toast, TweenInfo.new(0.25), {TextTransparency=1}):Play()
-        task.wait(0.3)
+        TweenService:Create(toast, TweenInfo.new(0.2), {TextTransparency = 1}):Play()
+        task.wait(0.22)
         if token == toastToken then toast.Visible = false end
     end)
 end
 
-local mapNames = { NeonDistrict="DISTRITO NEÓN", InkDepot="DEPÓSITO DE TINTA", RooftopRush="AZOTEAS NEÓN" }
-
-local function clearContent()
-    for _, child in ipairs(content:GetChildren()) do
+local function clearList()
+    for _, child in ipairs(list:GetChildren()) do
         if not child:IsA("UIListLayout") then child:Destroy() end
     end
 end
 
-local function row(titleText, description, actionText, color, callback, height)
-    local r = frame(content, UDim2.new(1,-8,0,height or 94), UDim2.new(), Color3.fromRGB(16,19,31), 0.02)
-    stroke(r, color or CYAN, 0.62, 1)
-    label(r, titleText, UDim2.new(0.62,-10,0,34), UDim2.new(0,14,0,9), 17, WHITE)
-    local d = label(r, description or "", UDim2.new(0.62,-10,0,42), UDim2.new(0,14,0,44), 12, MUTED)
+local function row(titleText, description, actionText, color, callback)
+    local holder = Instance.new("Frame")
+    holder.Size = UDim2.new(1, -8, 0, 82)
+    holder.BackgroundColor3 = Color3.fromRGB(15, 18, 31)
+    holder.BackgroundTransparency = 0.08
+    holder.BorderSizePixel = 0
+    holder.Parent = list
+    corner(holder, 12)
+    stroke(holder, color or CYAN, 0.55, 1)
+    makeLabel(holder, titleText, UDim2.new(0.62, -12, 0, 29), UDim2.new(0, 13, 0, 8), 16, WHITE)
+    makeLabel(holder, description or "", UDim2.new(0.62, -12, 0, 34), UDim2.new(0, 13, 0, 39), 11, MUTED)
     if actionText then
-        local a = button(r, actionText, UDim2.new(0.32,0,0,62), color or CYAN)
-        a.Position = UDim2.new(0.66,0,0,16)
-        if callback then a.Activated:Connect(callback) end
+        local action = makeButton(holder, actionText, UDim2.new(0.31, 0, 0, 52), color or CYAN)
+        action.Position = UDim2.new(0.67, 0, 0, 15)
+        if callback then action.Activated:Connect(callback) end
     end
-    return r
 end
 
-local function section(text, color)
-    local l = label(content, text, UDim2.new(1,-8,0,38), UDim2.new(), 19, color or WHITE)
-    l.TextXAlignment = Enum.TextXAlignment.Left
-    return l
+local function openModal(titleText, artId)
+    panelMode = titleText
+    modal.Visible = true
+    modalTitle.Text = titleText
+    modalArt.Image = asset(artId or Visual.Assets.Shop)
+    clearList()
+end
+
+local function rankName(rating)
+    local name = "BRONZE"
+    for _, entry in ipairs((config.Competitive and config.Competitive.Ranks) or {}) do
+        if rating >= (entry.Min or 0) then name = entry.Name end
+    end
+    return name
 end
 
 local function refreshTop()
-    if not profile then return end
-    moneyLabel.Text = "TM " .. tostring(profile.TintaMoney or profile.Won or 0)
-    ratingLabel.Text = "RATING " .. tostring(profile.CompetitiveRating or 1000)
-    rankLabel.Text = tostring(profile.CompetitiveRank or "BRONZE")
-    playerMeta.Text = string.format("NIVEL %d · %d VICTORIAS", profile.Level or 1, profile.Wins or 0)
-end
-
-local function openPanel(name)
-    currentPanel = name
-    panel.Visible = true
-    panelTitle.Text = name
-    clearContent()
+    local rating = tonumber(profile.CompetitiveRating) or 1000
+    playerLabel.Text = player.DisplayName
+    playerMeta.Text = string.format("NIVEL %d · %d VICTORIAS", tonumber(profile.Level) or 1, tonumber(profile.Wins) or 0)
+    moneyLabel.Text = "TM " .. tostring(profile.TintaMoney or 0)
+    ratingLabel.Text = "RATING " .. tostring(rating)
+    rankLabel.Text = rankName(rating)
 end
 
 local function openArsenal()
-    openPanel("ARSENAL COMPETITIVO")
-    for _, weaponId in ipairs(config.Shooter.WeaponOrder) do
-        local def = config.Weapons[weaponId]
-        local unlocked = profile.Inventory and profile.Inventory[weaponId]
-        local selected = profile.SelectedWeapon == weaponId
-        local description = string.format("%s · DAÑO %d · CARGADOR %d · %s", def.Class or "ARMA", def.Damage, def.Magazine, def.Automatic and "AUTOMÁTICA" or "SEMIAUTO")
-        row(def.DisplayName, description, selected and "EQUIPADA" or (unlocked and "EQUIPAR" or "BLOQUEADA"), def.Accent, function()
-            if not unlocked then showToast("Desbloqueala desde la tienda.") return end
-            local _, message, newProfile = SelectWeapon:InvokeServer(weaponId)
-            if newProfile then profile = newProfile refreshTop() openArsenal() end
-            showToast(message)
-        end)
+    openModal("ARSENAL", Visual.Assets.Lobby)
+    local inventory = profile.Inventory or {}
+    local order = (config.Shooter and config.Shooter.WeaponOrder) or {}
+    for _, weaponId in ipairs(order) do
+        local definition = config.Weapons and config.Weapons[weaponId]
+        if definition then
+            local owned = inventory[weaponId] ~= nil
+            local selected = profile.SelectedWeapon == weaponId
+            row(definition.DisplayName or weaponId, string.format("Daño %s · Cargador %s", tostring(definition.Damage or "-"), tostring(definition.Magazine or "-")), selected and "EQUIPADA" or (owned and "EQUIPAR" or "TIENDA"), CYAN, function()
+                if not owned then openModal("TIENDA", Visual.Assets.Shop) return end
+                local ok, message, newProfile = SelectWeapon:InvokeServer(weaponId)
+                if newProfile then profile = newProfile refreshTop() end
+                showToast(message)
+                if ok then openArsenal() end
+            end)
+        end
     end
-end
-
-local function priceText(item)
-    if item.Currency == "Gems" then return "💎 " .. tostring(item.Price) end
-    return "TM " .. tostring(item.Price)
 end
 
 local function openShop()
-    openPanel("TIENDA / SHOP")
-    section("COMPRAR CON TINTA MONEY", ORANGE)
-    for _, itemId in ipairs(config.ShopOrder) do
-        local item = config.Shop[itemId]
-        local inventoryId = item.WeaponId or item.ItemId or itemId
-        local owned = (item.Type == "Weapon" or item.Type == "Cosmetic") and profile.Inventory and profile.Inventory[inventoryId]
-        row(item.DisplayName, item.Description, owned and "COMPRADO" or priceText(item), item.Type == "Weapon" and MAGENTA or CYAN, function()
-            if owned then showToast("Ya tenés este objeto.") return end
-            local _, message, newProfile = ShopPurchase:InvokeServer(itemId)
-            if newProfile then profile = newProfile refreshTop() openShop() end
-            showToast(message)
-        end)
+    openModal("TIENDA / RECOMPENSAS", Visual.Assets.Shop)
+    for _, itemId in ipairs(config.ShopOrder or {}) do
+        local item = config.Shop and config.Shop[itemId]
+        if item then
+            local inventoryId = item.WeaponId or item.ItemId or itemId
+            local owned = (item.Type == "Weapon" or item.Type == "Cosmetic") and profile.Inventory and profile.Inventory[inventoryId]
+            local price = item.Currency == "Gems" and ("GEM " .. tostring(item.Price)) or ("TM " .. tostring(item.Price))
+            row(item.DisplayName or itemId, item.Description or "", owned and "COMPRADO" or price, item.Type == "Weapon" and MAGENTA or ORANGE, function()
+                if owned then showToast("Ya tenés este objeto.") return end
+                local _, message, newProfile = ShopPurchase:InvokeServer(itemId)
+                if newProfile then profile = newProfile refreshTop() end
+                showToast(message)
+                openShop()
+            end)
+        end
     end
-
-    section("COMPRAR TINTA MONEY CON ROBUX", MAGENTA)
-    for _, product in ipairs(config.Monetization.Products or {}) do
-        if product.GrantType == "TintaMoney" then
-            local ready = (tonumber(product.ProductId) or 0) > 0
-            row(product.DisplayName, product.Description, ready and ("R$ " .. tostring(product.PriceRobux)) or "CONFIGURANDO", MAGENTA, function()
-                if not ready then showToast("Producto Robux todavía en configuración.") return end
+    for _, product in ipairs((config.Monetization and config.Monetization.Products) or {}) do
+        if (tonumber(product.ProductId) or 0) > 0 then
+            row(product.DisplayName or "PACK ROBUX", product.Description or "Compra premium", "R$ " .. tostring(product.PriceRobux or ""), MAGENTA, function()
                 MarketplaceService:PromptProductPurchase(player, product.ProductId)
             end)
         end
     end
 end
 
-local function leaderboardRows(boardName, valueSuffix)
-    local board, message = GetLeaderboards:InvokeServer(boardName, 15)
+local function openRanking()
+    openModal("RANKING COMPETITIVO", Visual.Assets.Round1)
+    row("PREMIOS DE TEMPORADA", "1.º 300M TM · 2.º 150M TM · 3.º 100M TM", nil, ORANGE)
+    local board, message = GetLeaderboards:InvokeServer("Season", 15)
     if type(board) ~= "table" then
         row("RANKING NO DISPONIBLE", tostring(message or "Intentá nuevamente."), nil, CYAN)
         return
     end
     for _, entry in ipairs(board) do
-        row(string.format("#%d  %s", entry.Position, entry.Name), tostring(entry.Value) .. (valueSuffix or ""), nil, entry.Position == 1 and ORANGE or CYAN, nil, 68)
-    end
-end
-
-local function openRanking()
-    openPanel("RANKING DE COMPETENCIA")
-    section("TEMPORADA " .. tostring(config.Competitive.SeasonId), MAGENTA)
-    row("PREMIOS DEL PODIO", "1.º 300.000.000 TM · 2.º 150.000.000 TM · 3.º 100.000.000 TM", nil, ORANGE, nil, 76)
-    section("PUNTOS DE TEMPORADA", CYAN)
-    leaderboardRows("Season", " PTS")
-    section("RATING COMPETITIVO", MAGENTA)
-    leaderboardRows("Rating", " RATING")
-end
-
-local function openDonations()
-    openPanel("DONACIONES / APOYO")
-    section("APOYAR CON ROBUX", MAGENTA)
-    row("RANKING DE APOYO", "Las compras de apoyo suman al ranking global de donaciones y entregan un bonus de Tinta Money.", nil, MAGENTA, nil, 80)
-    for _, product in ipairs(config.Monetization.Products or {}) do
-        if product.GrantType == "Donation" then
-            local ready = (tonumber(product.ProductId) or 0) > 0
-            local desc = string.format("%s · Bonus: TM %s", product.Description or "Apoyo", tostring(product.BonusTintaMoney or 0))
-            row(product.DisplayName, desc, ready and ("R$ " .. tostring(product.PriceRobux)) or "CONFIGURANDO", MAGENTA, function()
-                if not ready then showToast("Producto Robux todavía en configuración.") return end
-                MarketplaceService:PromptProductPurchase(player, product.ProductId)
-            end)
-        end
-    end
-    section("TOP DONACIONES", ORANGE)
-    leaderboardRows("Donations", " ROBUX")
-end
-
-local function openPersonalize()
-    openPanel("PERSONALIZAR OPERADOR")
-    local skins = {
-        {Id="Default", Name="OPERADOR BASE", Color=CYAN},
-        {Id="NeonRebelSkin", Name="NEÓN REBELDE", Color=MAGENTA},
-        {Id="CyanOperatorSkin", Name="OPERADOR CIAN", Color=CYAN},
-        {Id="MagentaOperatorSkin", Name="OPERADOR MAGENTA", Color=MAGENTA},
-    }
-    for _, skin in ipairs(skins) do
-        local unlocked = profile.Inventory and profile.Inventory[skin.Id]
-        local selected = profile.SelectedSkin == skin.Id
-        row(skin.Name, unlocked and "Disponible en tu inventario." or "Se desbloquea desde la tienda.", selected and "EQUIPADO" or (unlocked and "EQUIPAR" or "BLOQUEADO"), skin.Color, function()
-            if not unlocked then showToast("Comprá este aspecto en la tienda.") return end
-            local _, message, newProfile = SelectSkin:InvokeServer(skin.Id)
-            if newProfile then profile = newProfile refreshTop() openPersonalize() end
-            showToast(message)
-        end)
+        row(string.format("#%d  %s", entry.Position or 0, entry.Name or "Jugador"), tostring(entry.Value or 0) .. " PTS", nil, entry.Position == 1 and ORANGE or CYAN)
     end
 end
 
 local function openRewards()
-    openPanel("RECOMPENSAS")
-    row("GIRO DE RECOMPENSA", "Usa un ticket o Tinta Money para conseguir cosméticos y premios.", "GIRAR", ORANGE, function()
+    openModal("RECOMPENSAS / RULETA", Visual.Assets.Shop)
+    row("RULETA TINTA FINAL", "Premios, Tinta Money, utilidades y armas desbloqueables.", "GIRAR", ORANGE, function()
         local _, message, result, newProfile = Spin:InvokeServer()
         if newProfile then profile = newProfile refreshTop() end
-        showToast(result and (message .. " · " .. tostring(result.RewardId)) or message)
+        showToast(result and (tostring(message) .. " · " .. tostring(result.RewardId or "PREMIO")) or message)
     end)
-    row("VICTORIA COMPETITIVA", "Ganar aumenta rating, puntos de temporada, XP y Tinta Money.", nil, CYAN)
-    row("HEADSHOTS", "Los impactos a la cabeza causan daño adicional según el arma.", nil, MAGENTA)
+    row("BATTLE PASS", "100 niveles de temporada con pista gratis y premium.", nil, MAGENTA)
 end
 
-local function joinQueue()
+local function queueNow()
     if player:GetAttribute("AFKMode") == true then
         local _, message = ToggleAFK:InvokeServer()
         showToast(message)
     else
-        showToast("Ya estás en la cola. La próxima partida te incluirá automáticamente.")
-    end
-end
-
-playButton.Activated:Connect(joinQueue)
-bigPlay.Activated:Connect(joinQueue)
-arsenalButton.Activated:Connect(openArsenal)
-shopButton.Activated:Connect(openShop)
-rankingButton.Activated:Connect(openRanking)
-donationButton.Activated:Connect(openDonations)
-personalizeButton.Activated:Connect(openPersonalize)
-rewardsButton.Activated:Connect(openRewards)
-closePanel.Activated:Connect(function() panel.Visible = false currentPanel = nil end)
-
-local function updateState(data)
-    currentState = data
-    local phase = tostring(data.Phase or "Lobby")
-    local combat = phase == "Playing" or phase == "Loading"
-    backdrop.Visible = not combat
-    left.Visible = not combat
-    quick.Visible = not combat
-    prize.Visible = not combat and phase ~= "Voting"
-    panel.Visible = panel.Visible and not combat
-    votePanel.Visible = phase == "Voting"
-
-    local modeNames = {
-        TeamSplash = "10 VS 10 · CIAN VS MAGENTA",
-        FreeSplash = "TODOS CONTRA TODOS",
-        Survival = "ENTRENAMIENTO DE TINTA",
-    }
-    modeLabel.Text = modeNames[data.Mode] or "COMPETITIVE ARENA · 20 JUGADORES"
-    statusLabel.Text = tostring(data.Announcement or "EN COLA COMPETITIVA")
-
-    if phase == "Voting" then
-        for i, b in ipairs(voteButtons) do
-            local mapId = data.OfferedGames and data.OfferedGames[i]
-            b.Text = mapId and ((mapNames[mapId] or mapId) .. "\n" .. tostring((data.Votes and data.Votes[mapId]) or 0) .. " VOTOS") or "-"
+        local connected = tonumber(currentState.ConnectedPlayers) or 1
+        if connected < 2 then
+            showToast("Entraste al calentamiento. La partida PvP empieza al llegar otro jugador.")
+        else
+            showToast("Estás en cola PvP. Preparando partida...")
         end
     end
 end
 
-local function refreshSnapshot()
-    local success, snapshot = pcall(function() return GetSnapshot:InvokeServer() end)
-    if success and type(snapshot) == "table" then
-        profile = snapshot.Profile
-        config = snapshot.Config
-        currentState = snapshot.Game
-        refreshTop()
-        updateState(currentState or {})
-        if currentPanel == "TIENDA / SHOP" then openShop() end
-        if currentPanel == "DONACIONES / APOYO" then openDonations() end
+playButton.Activated:Connect(queueNow)
+playNow.Activated:Connect(queueNow)
+arsenalButton.Activated:Connect(openArsenal)
+shopButton.Activated:Connect(openShop)
+rankingButton.Activated:Connect(openRanking)
+rewardsButton.Activated:Connect(openRewards)
+closeModal.Activated:Connect(function() modal.Visible = false panelMode = nil end)
+
+local function updateState(data)
+    if type(data) ~= "table" then return end
+    currentState = data
+    local phase = tostring(data.Phase or "Waiting")
+    local combat = phase == "Combat" or phase == "Loading" or player:GetAttribute("InShooterMatch") == true
+    root.Visible = not combat
+    if combat then modal.Visible = false end
+
+    local mapNames = {NeonDistrict = "DISTRITO NEÓN", InkDepot = "DEPÓSITO DE TINTA", RooftopRush = "AZOTEAS NEÓN"}
+    local mapName = mapNames[data.CurrentMap] or "MAPA AUTOMÁTICO"
+    local connected = tonumber(data.ConnectedPlayers) or 0
+    if phase == "Warmup" then
+        modeLabel.Text = "CALENTAMIENTO · " .. mapName
+        statusLabel.Text = "PODÉS MOVERTE, APUNTAR, DISPARAR Y RECARGAR · ESPERANDO RIVAL"
+    elseif phase == "Waiting" then
+        modeLabel.Text = "PVP PURO · SIN BOTS"
+        statusLabel.Text = string.format("ESPERANDO JUGADORES · %d/2", connected)
+    elseif phase == "Intermission" then
+        modeLabel.Text = "PVP · " .. mapName
+        statusLabel.Text = tostring(data.Announcement or "PREPARANDO PARTIDA")
+    else
+        modeLabel.Text = "PVP · " .. mapName
+        statusLabel.Text = tostring(data.Announcement or "LISTO")
     end
 end
 
-ProfileState.OnClientEvent:Connect(function(newProfile)
-    profile = newProfile
+local function refreshSnapshot()
+    local ok, snapshot = pcall(function() return GetSnapshot:InvokeServer() end)
+    if not ok or type(snapshot) ~= "table" then
+        showToast("Conectando con el servidor...")
+        return
+    end
+    profile = snapshot.Profile or profile
+    config = snapshot.Config or config
+    currentState = snapshot.Game or currentState
     refreshTop()
+    updateState(currentState)
+end
+
+ProfileState.OnClientEvent:Connect(function(newProfile)
+    if type(newProfile) == "table" then profile = newProfile refreshTop() end
 end)
 GameState.OnClientEvent:Connect(updateState)
 Victory.OnClientEvent:Connect(function(message) showToast(message or "¡Victoria!") end)
+player:GetAttributeChangedSignal("InShooterMatch"):Connect(function() updateState(currentState) end)
+
 MarketplaceService.PromptProductPurchaseFinished:Connect(function(userId, _, purchased)
-    if userId ~= player.UserId or not purchased then return end
-    showToast("Compra recibida. Acreditando...")
-    task.delay(2, refreshSnapshot)
+    if userId == player.UserId and purchased then task.delay(2, refreshSnapshot) end
 end)
 
 refreshSnapshot()
-if not config then showToast("Conectando con el servidor...") end
-
-print("[TintaFinal] Competitive Lobby UI cargada.")
+print("[TintaFinal] Lobby visual PvP limpio y jugable cargado.")
