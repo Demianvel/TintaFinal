@@ -1,0 +1,37 @@
+return {
+    UtilityMedkit = {
+        DisplayName = "BOTIQUÍN DE CAMPO",
+        Description = "Recupera 45 de vida. Uso con enfriamiento.",
+        Price = 4_500,
+        Cooldown = 9,
+        Type = "Medkit",
+        Heal = 45,
+    },
+    UtilityInkGrenade = {
+        DisplayName = "GRANADA DE TINTA",
+        Description = "Pulso de tinta de área para combate competitivo.",
+        Price = 7_500,
+        Cooldown = 12,
+        Type = "InkGrenade",
+        Damage = 42,
+        Radius = 18,
+    },
+    UtilitySmoke = {
+        DisplayName = "HUMO TÁCTICO",
+        Description = "Crea una nube visual temporal para cortar visión.",
+        Price = 5_500,
+        Cooldown = 14,
+        Type = "Smoke",
+        Duration = 8,
+        Radius = 15,
+    },
+    UtilityStim = {
+        DisplayName = "STIM DE MOVILIDAD",
+        Description = "Aumenta la velocidad durante 6 segundos.",
+        Price = 6_500,
+        Cooldown = 18,
+        Type = "Stim",
+        Duration = 6,
+        SpeedBonus = 6,
+    },
+}
