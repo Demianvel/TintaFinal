@@ -15,13 +15,13 @@ local VisualConfig = {
     },
 
     Assets = {
-        MainMenu = 0,
-        Loading = 0,
-        Lobby = 0,
-        Round1 = 0,
-        Round2 = 0,
-        Shop = 0,
-        Icon = 0,
+        MainMenu = 97839776094055,
+        Loading = 129720347915606,
+        Lobby = 89095985932947,
+        Round1 = 125053219308080,
+        Round2 = 84361702484652,
+        Shop = 138366310874881,
+        Icon = 97839776094055,
     },
 
     LoadingDuration = 4.5,

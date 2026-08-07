@@ -1,32 +1,27 @@
 Propietario resuelto: demianvelo (8433192682)
 Renderizando assets/branding/main.svg -> build/branding/MainMenu.png
 Subiendo MainMenu a Roblox...
-Traceback (most recent call last):
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/upload_brand_assets.py", line 184, in <module>
-    main()
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/upload_brand_assets.py", line 163, in main
-    asset_ids[key] = create_asset(api_key, creator_id, key, png_path)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/upload_brand_assets.py", line 84, in create_asset
-    response = requests.post(
-               ^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 115, in post
-    return request("post", url, data=data, json=json, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 59, in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 575, in request
-    prep = self.prepare_request(req)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 484, in prepare_request
-    p.prepare(
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 368, in prepare
-    self.prepare_headers(headers)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 490, in prepare_headers
-    check_header_validity(header)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1032, in check_header_validity
-    _validate_header_part(header, value, 1)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1048, in _validate_header_part
-    raise InvalidHeader(
-requests.exceptions.InvalidHeader: Invalid leading whitespace, reserved character(s), or return character(s) in header value: 'universe.place:write\n\ndeveloper-product:read\ndeveloper-product:write\n\nasset:read\nasset:write'
+MainMenu: 97839776094055
+Renderizando assets/branding/loading.svg -> build/branding/Loading.png
+Subiendo Loading a Roblox...
+Loading: 129720347915606
+Renderizando assets/branding/lobby.svg -> build/branding/Lobby.png
+Subiendo Lobby a Roblox...
+Lobby: 89095985932947
+Renderizando assets/branding/round1.svg -> build/branding/Round1.png
+Subiendo Round1 a Roblox...
+Round1: 125053219308080
+Renderizando assets/branding/round2.svg -> build/branding/Round2.png
+Subiendo Round2 a Roblox...
+Round2: 84361702484652
+Renderizando assets/branding/shop.svg -> build/branding/Shop.png
+Subiendo Shop a Roblox...
+Shop: 138366310874881
+{
+  "MainMenu": "97839776094055",
+  "Loading": "129720347915606",
+  "Lobby": "89095985932947",
+  "Round1": "125053219308080",
+  "Round2": "84361702484652",
+  "Shop": "138366310874881"
+}

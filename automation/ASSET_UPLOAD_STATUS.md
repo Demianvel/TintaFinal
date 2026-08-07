@@ -1,41 +1,5 @@
 # Carga de imágenes de Tinta Final
 
-- Estado: ERROR
-- Commit: 20957ba4c45aeebf2da57736c10ab0c1756c84ae
-- Fecha UTC: 2026-08-07 01:54:57
-
-```text
-Propietario resuelto: demianvelo (8433192682)
-Renderizando assets/branding/main.svg -> build/branding/MainMenu.png
-Subiendo MainMenu a Roblox...
-Traceback (most recent call last):
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/upload_brand_assets.py", line 184, in <module>
-    main()
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/upload_brand_assets.py", line 163, in main
-    asset_ids[key] = create_asset(api_key, creator_id, key, png_path)
-                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/upload_brand_assets.py", line 84, in create_asset
-    response = requests.post(
-               ^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 115, in post
-    return request("post", url, data=data, json=json, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 59, in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 575, in request
-    prep = self.prepare_request(req)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 484, in prepare_request
-    p.prepare(
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 368, in prepare
-    self.prepare_headers(headers)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 490, in prepare_headers
-    check_header_validity(header)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1032, in check_header_validity
-    _validate_header_part(header, value, 1)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1048, in _validate_header_part
-    raise InvalidHeader(
-requests.exceptions.InvalidHeader: Invalid leading whitespace, reserved character(s), or return character(s) in header value: 'universe.place:write\n\ndeveloper-product:read\ndeveloper-product:write\n\nasset:read\nasset:write'
-
-```
+- Estado: CORRECTO
+- Commit: 643183f1f7a23a3a053dcf93bd2c23ef482a9932
+- Fecha UTC: 2026-08-07 02:05:36
