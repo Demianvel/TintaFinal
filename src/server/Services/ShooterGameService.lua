@@ -3,6 +3,8 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local Config = require(ReplicatedStorage.Shared.GameConfig)
 local ProfileService = require(script.Parent.ProfileService)
+local RankingService = require(script.Parent.RankingService)
+local CharacterStyleService = require(script.Parent.CharacterStyleService)
 local MapService = require(script.Parent.MapService)
 local WeaponService = require(script.Parent.WeaponService)
 
@@ -18,6 +20,7 @@ local bots = {}
 local botTouchCooldown = {}
 local scores = {}
 local teamScores = { Cyan = 0, Magenta = 0 }
+local matchNumber = 0
 
 local state = {
     Phase = "Booting",
@@ -28,10 +31,14 @@ local state = {
     OfferedGames = {},
     Votes = {},
     AliveCount = 0,
-    Announcement = "Preparando Tinta Final Arena Shooter...",
+    Announcement = "Preparando Tinta Final Competitive Arena...",
     Scores = {},
     TeamScores = { Cyan = 0, Magenta = 0 },
+    TeamCounts = { Cyan = 0, Magenta = 0 },
     Wave = 0,
+    MaxParticipants = Config.Match.MaxParticipants,
+    Podium = {},
+    SeasonId = Config.Competitive.SeasonId,
 }
 
 local function participantList()
@@ -39,6 +46,7 @@ local function participantList()
     for player, enabled in pairs(participants) do
         if enabled and player.Parent then table.insert(list, player) end
     end
+    table.sort(list, function(a, b) return a.UserId < b.UserId end)
     return list
 end
 
@@ -47,12 +55,29 @@ local function activePlayers()
     for _, player in ipairs(Players:GetPlayers()) do
         if not afkPlayers[player] and ProfileService.Get(player) then table.insert(list, player) end
     end
+    table.sort(list, function(a, b)
+        local aJoin = a:GetAttribute("TintaQueueTime") or 0
+        local bJoin = b:GetAttribute("TintaQueueTime") or 0
+        if aJoin == bJoin then return a.UserId < b.UserId end
+        return aJoin < bJoin
+    end)
+    while #list > Config.Match.MaxParticipants do table.remove(list) end
     return list
+end
+
+local function teamCounts()
+    local cyan, magenta = 0, 0
+    for _, player in ipairs(participantList()) do
+        if player:GetAttribute("ShooterTeam") == "Cyan" then cyan += 1 end
+        if player:GetAttribute("ShooterTeam") == "Magenta" then magenta += 1 end
+    end
+    return cyan, magenta
 end
 
 local function publicState()
     local publicScores = {}
     for userId, amount in pairs(scores) do publicScores[tostring(userId)] = amount end
+    local cyanCount, magentaCount = teamCounts()
     return {
         Phase = state.Phase,
         TimeLeft = state.TimeLeft,
@@ -65,7 +90,12 @@ local function publicState()
         Announcement = state.Announcement,
         Scores = publicScores,
         TeamScores = { Cyan = teamScores.Cyan, Magenta = teamScores.Magenta },
+        TeamCounts = { Cyan = cyanCount, Magenta = magentaCount },
         Wave = state.Wave,
+        MaxParticipants = Config.Match.MaxParticipants,
+        Podium = table.clone(state.Podium),
+        SeasonId = Config.Competitive.SeasonId,
+        ConnectedPlayers = #Players:GetPlayers(),
     }
 end
 
@@ -96,6 +126,7 @@ end
 
 local function setupCombatCharacter(player, character)
     ProfileService.ApplyUpgrades(player, character)
+    CharacterStyleService.Apply(player, character)
     local humanoid = character:WaitForChild("Humanoid", 8)
     if not humanoid then return end
     humanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
@@ -104,7 +135,10 @@ local function setupCombatCharacter(player, character)
 
     if matchRunning and participants[player] then
         task.delay(0.2, function()
-            if player.Parent and character.Parent then MapService.Teleport(player, mapSpawnFor(player)) end
+            if player.Parent and character.Parent then
+                CharacterStyleService.Apply(player, character)
+                MapService.Teleport(player, mapSpawnFor(player))
+            end
         end)
     else
         task.delay(0.2, function()
@@ -119,9 +153,7 @@ local function setupCombatCharacter(player, character)
 end
 
 local function clearBots()
-    for model in pairs(bots) do
-        if model.Parent then model:Destroy() end
-    end
+    for model in pairs(bots) do if model.Parent then model:Destroy() end end
     table.clear(bots)
     table.clear(botTouchCooldown)
 end
@@ -134,10 +166,7 @@ local function nearestParticipant(position)
         local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
         if humanoid and root and humanoid.Health > 0 then
             local distance = (root.Position - position).Magnitude
-            if distance < bestDistance then
-                bestDistance = distance
-                bestPlayer = player
-            end
+            if distance < bestDistance then bestDistance, bestPlayer = distance, player end
         end
     end
     return bestPlayer, bestDistance
@@ -175,13 +204,9 @@ local function spawnBot(position, wave)
     head.Parent = model
 
     local rootJoint = Instance.new("WeldConstraint")
-    rootJoint.Part0 = root
-    rootJoint.Part1 = torso
-    rootJoint.Parent = root
+    rootJoint.Part0, rootJoint.Part1, rootJoint.Parent = root, torso, root
     local headJoint = Instance.new("WeldConstraint")
-    headJoint.Part0 = torso
-    headJoint.Part1 = head
-    headJoint.Parent = torso
+    headJoint.Part0, headJoint.Part1, headJoint.Parent = torso, head, torso
 
     local humanoid = Instance.new("Humanoid")
     humanoid.MaxHealth = 70 + wave * 18
@@ -223,25 +248,54 @@ end
 
 local function chooseMode(count)
     if count <= 1 then return "Survival" end
-    local roll = math.random(1, 10)
-    if roll <= 2 then return "Survival" end
-    if roll <= 7 then return "TeamSplash" end
-    return "FreeSplash"
+    matchNumber += 1
+    -- Tres partidas por equipos y luego una FFA para mantener ambos modos activos.
+    if matchNumber % 4 == 0 then return "FreeSplash" end
+    return "TeamSplash"
+end
+
+local function ratingOf(player)
+    local profile = ProfileService.Get(player)
+    return profile and profile.CompetitiveRating or Config.Competitive.StartingRating
 end
 
 local function assignTeams(playersList)
-    for index, player in ipairs(playersList) do
-        local team = index % 2 == 0 and "Magenta" or "Cyan"
-        player:SetAttribute("ShooterTeam", currentMode == "TeamSplash" and team or "Solo")
+    if currentMode ~= "TeamSplash" then
+        for _, player in ipairs(playersList) do player:SetAttribute("ShooterTeam", "Solo") end
+        return
+    end
+
+    local sorted = table.clone(playersList)
+    table.sort(sorted, function(a, b) return ratingOf(a) > ratingOf(b) end)
+    local totals = { Cyan = 0, Magenta = 0 }
+    local counts = { Cyan = 0, Magenta = 0 }
+    local maxPerTeam = math.ceil(#sorted / 2)
+
+    for _, player in ipairs(sorted) do
+        local team
+        if counts.Cyan >= maxPerTeam then
+            team = "Magenta"
+        elseif counts.Magenta >= maxPerTeam then
+            team = "Cyan"
+        elseif totals.Cyan < totals.Magenta then
+            team = "Cyan"
+        elseif totals.Magenta < totals.Cyan then
+            team = "Magenta"
+        else
+            team = counts.Cyan <= counts.Magenta and "Cyan" or "Magenta"
+        end
+        counts[team] += 1
+        totals[team] += ratingOf(player)
+        player:SetAttribute("ShooterTeam", team)
     end
 end
 
-local function startVoting(playerCount)
+local function startVoting()
     votesByPlayer = {}
     state.Votes = {}
     state.OfferedGames = table.clone(Config.Shooter.MapOrder)
     for _, mapId in ipairs(state.OfferedGames) do state.Votes[mapId] = 0 end
-    countdown(Config.Match.VotingSeconds, "Voting", "Votá el próximo mapa shooter")
+    countdown(Config.Match.VotingSeconds, "Voting", "VOTÁ EL PRÓXIMO MAPA")
 
     local best = state.OfferedGames[1]
     local highest = -1
@@ -256,8 +310,7 @@ local function startVoting(playerCount)
         end
     end
     if #tied > 0 then best = tied[math.random(1, #tied)] end
-    state.OfferedGames = {}
-    state.Votes = {}
+    state.OfferedGames, state.Votes = {}, {}
     return best
 end
 
@@ -278,14 +331,14 @@ local function addKill(shooter, victim, headshot)
         shooterProfile.Stats.Kills += 1
         if headshot then shooterProfile.Stats.Headshots += 1 end
     end
-    ProfileService.AddWon(shooter, Config.Match.KillRewardWon)
+    scores[shooter.UserId] = (scores[shooter.UserId] or 0) + 1
+    ProfileService.AddTintaMoney(shooter, Config.Match.KillTintaMoney)
     ProfileService.AddXP(shooter, Config.Match.KillXP)
+    ProfileService.AddSeasonPoints(shooter, Config.Competitive.KillSeasonPoints)
 
     if currentMode == "TeamSplash" then
         local team = shooter:GetAttribute("ShooterTeam")
         if teamScores[team] then teamScores[team] += 1 end
-    else
-        scores[shooter.UserId] = (scores[shooter.UserId] or 0) + 1
     end
     if remotes then
         remotes.KillFeed:FireAllClients(shooter.DisplayName, victim and victim.DisplayName or "Objetivo", headshot == true)
@@ -301,7 +354,7 @@ local function addBotKill(shooter, _, headshot)
         if headshot then profile.Stats.Headshots += 1 end
     end
     scores[shooter.UserId] = (scores[shooter.UserId] or 0) + 1
-    ProfileService.AddWon(shooter, Config.Match.BotKillRewardWon)
+    ProfileService.AddTintaMoney(shooter, Config.Match.BotKillTintaMoney)
     ProfileService.AddXP(shooter, math.floor(Config.Match.KillXP * 0.6))
     broadcast()
 end
@@ -310,7 +363,7 @@ local function runSurvival()
     local completed = true
     for wave = 1, Config.Match.SurvivalWaves do
         state.Wave = wave
-        state.Announcement = "OLEADA " .. wave .. " / " .. Config.Match.SurvivalWaves
+        state.Announcement = "ENTRENAMIENTO · OLEADA " .. wave .. " / " .. Config.Match.SurvivalWaves
         broadcast()
         local spawns = currentArena.BotSpawns
         local count = math.min(8 + wave * 3 + #participantList() * 2, 38)
@@ -357,37 +410,80 @@ local function runPvP()
     while matchRunning and os.clock() < deadline and not combatLimitReached() do
         state.TimeLeft = math.max(0, math.ceil(deadline - os.clock()))
         if currentMode == "TeamSplash" then
-            state.Announcement = string.format("CIAN %d  -  %d MAGENTA", teamScores.Cyan, teamScores.Magenta)
+            local cyanCount, magentaCount = teamCounts()
+            state.Announcement = string.format("CIAN %d [%d]  ·  [%d] %d MAGENTA", teamScores.Cyan, cyanCount, magentaCount, teamScores.Magenta)
         else
-            state.Announcement = "TODOS CONTRA TODOS"
+            state.Announcement = "TODOS CONTRA TODOS · PRIMEROS " .. Config.Match.FFAScoreLimit
         end
         broadcast()
         task.wait(1)
     end
 end
 
+local function orderedPlayers()
+    local list = participantList()
+    table.sort(list, function(a, b)
+        local aScore, bScore = scores[a.UserId] or 0, scores[b.UserId] or 0
+        if aScore == bScore then return ratingOf(a) > ratingOf(b) end
+        return aScore > bScore
+    end)
+    return list
+end
+
 local function winners(survivalCompleted)
     local result = {}
     local list = participantList()
-    if currentMode == "Survival" then
-        if survivalCompleted then return list end
-        return result
-    end
+    if currentMode == "Survival" then return survivalCompleted and list or result end
     if currentMode == "TeamSplash" then
         local winningTeam = teamScores.Cyan == teamScores.Magenta and nil or (teamScores.Cyan > teamScores.Magenta and "Cyan" or "Magenta")
         if not winningTeam then return list end
-        for _, player in ipairs(list) do if player:GetAttribute("ShooterTeam") == winningTeam then table.insert(result, player) end end
+        for _, player in ipairs(list) do
+            if player:GetAttribute("ShooterTeam") == winningTeam then table.insert(result, player) end
+        end
         return result
     end
-    local bestScore = -1
-    for _, player in ipairs(list) do bestScore = math.max(bestScore, scores[player.UserId] or 0) end
-    for _, player in ipairs(list) do if (scores[player.UserId] or 0) == bestScore then table.insert(result, player) end end
+    local ordered = orderedPlayers()
+    if ordered[1] then table.insert(result, ordered[1]) end
     return result
+end
+
+local function buildPodium()
+    state.Podium = {}
+    local ordered = orderedPlayers()
+    for index = 1, math.min(3, #ordered) do
+        local player = ordered[index]
+        table.insert(state.Podium, {
+            Position = index,
+            UserId = player.UserId,
+            Name = player.DisplayName,
+            Score = scores[player.UserId] or 0,
+            Prize = Config.Competitive.PodiumRewards[index],
+        })
+    end
+end
+
+local function applyCompetitiveResult(player, didWin, placement, totalPlayers)
+    if currentMode == "Survival" then return end
+    local ratingDelta
+    if currentMode == "TeamSplash" then
+        ratingDelta = didWin and 16 or -12
+    else
+        local topHalf = placement <= math.max(1, math.ceil(totalPlayers / 2))
+        ratingDelta = topHalf and 10 or -8
+        if placement == 1 then ratingDelta = 20 end
+    end
+    ProfileService.AdjustRating(player, ratingDelta)
+    ProfileService.AddSeasonPoints(player, didWin and Config.Competitive.WinSeasonPoints or Config.Competitive.LossSeasonPoints)
 end
 
 local function finishMatch(survivalCompleted)
     WeaponService.SetActive(false)
     clearBots()
+    buildPodium()
+    local ordered = orderedPlayers()
+    local placement = {}
+    for index, player in ipairs(ordered) do placement[player] = index end
+
     local winList = winners(survivalCompleted)
     local winSet = {}
     for _, player in ipairs(winList) do winSet[player] = true end
@@ -395,27 +491,29 @@ local function finishMatch(survivalCompleted)
     for _, player in ipairs(participantList()) do
         local profile = ProfileService.Get(player)
         if profile then profile.Stats.MatchesPlayed += 1 end
-        ProfileService.AddWon(player, Config.Match.ParticipationWon)
+        ProfileService.AddTintaMoney(player, Config.Match.ParticipationTintaMoney)
         if winSet[player] then
             if profile then
                 profile.Wins += 1
                 profile.Stats.ShooterWins += 1
             end
-            ProfileService.AddWon(player, Config.Match.FinalRewardWon)
+            ProfileService.AddTintaMoney(player, Config.Match.WinTintaMoney)
             ProfileService.AddXP(player, Config.Match.WinXP)
-            if remotes then remotes.Victory:FireClient(player, "¡Victoria en Tinta Final!") end
+            if remotes then remotes.Victory:FireClient(player, "¡Victoria competitiva! + Tinta Money") end
         end
+        applyCompetitiveResult(player, winSet[player] == true, placement[player] or #ordered, #ordered)
+        task.spawn(RankingService.RecordPlayer, player)
         player:SetAttribute("InShooterMatch", false)
         player:SetAttribute("ShooterTeam", "Lobby")
+        if player.Character then CharacterStyleService.Apply(player, player.Character) end
         MapService.Teleport(player, MapService.GetPoint("Lobby"))
     end
 
-    state.Announcement = #winList > 0 and "PARTIDA TERMINADA - VICTORIA REGISTRADA" or "PARTIDA TERMINADA"
+    state.Announcement = #winList > 0 and "PARTIDA TERMINADA · RANKING ACTUALIZADO" or "PARTIDA TERMINADA"
     countdown(Config.Match.ResultsSeconds, "Results", state.Announcement)
     table.clear(participants)
     table.clear(scores)
-    teamScores.Cyan = 0
-    teamScores.Magenta = 0
+    teamScores.Cyan, teamScores.Magenta = 0, 0
     state.Wave = 0
     state.CurrentGame = nil
     state.CurrentMap = nil
@@ -426,10 +524,9 @@ end
 local function startMatch(mapId)
     local playersList = activePlayers()
     if #playersList < 1 then return end
-    participants = {}
-    scores = {}
-    teamScores.Cyan = 0
-    teamScores.Magenta = 0
+    participants, scores = {}, {}
+    teamScores.Cyan, teamScores.Magenta = 0, 0
+    state.Podium = {}
     for _, player in ipairs(playersList) do
         participants[player] = true
         scores[player.UserId] = 0
@@ -441,12 +538,12 @@ local function startMatch(mapId)
     state.Mode = currentMode
     state.CurrentGame = mapId
     state.CurrentMap = mapId
-    state.Announcement = "Cargando arena shooter..."
-    countdown(Config.Match.LoadingSeconds, "Loading", "Cargando " .. mapId)
+    countdown(Config.Match.LoadingSeconds, "Loading", "PREPARANDO " .. string.upper(mapId))
 
     currentArena = MapService.BuildGame(mapId)
     MapService.ActivatePickups(pickup)
     for _, player in ipairs(playersList) do
+        if player.Character then CharacterStyleService.Apply(player, player.Character) end
         MapService.Teleport(player, mapSpawnFor(player))
         WeaponService.ResetPlayer(player)
     end
@@ -465,6 +562,7 @@ end
 
 function ShooterGameService.Initialize(remoteFolder)
     remotes = remoteFolder
+    Players.RespawnTime = Config.Match.RespawnSeconds
     MapService.BuildLobby()
     WeaponService.Initialize(remotes, { OnPlayerKilled = addKill, OnBotKilled = addBotKill })
     workspace:SetAttribute("TintaFinalShooterMode", "Lobby")
@@ -486,8 +584,13 @@ end
 function ShooterGameService.ToggleAFK(player)
     afkPlayers[player] = not afkPlayers[player]
     player:SetAttribute("AFKMode", afkPlayers[player] == true)
-    if afkPlayers[player] then MapService.Teleport(player, MapService.GetPoint("AFK")) else MapService.Teleport(player, MapService.GetPoint("Lobby")) end
-    return true, afkPlayers[player] and "Modo AFK activado." or "Modo AFK desactivado."
+    if afkPlayers[player] then
+        MapService.Teleport(player, MapService.GetPoint("AFK"))
+    else
+        player:SetAttribute("TintaQueueTime", workspace:GetServerTimeNow())
+        MapService.Teleport(player, MapService.GetPoint("Lobby"))
+    end
+    return true, afkPlayers[player] and "Modo AFK activado." or "Volviste a la cola competitiva."
 end
 
 function ShooterGameService.OnCharacterAdded(player, character)
@@ -507,13 +610,13 @@ function ShooterGameService.StartLoop()
         while true do
             while #activePlayers() < Config.Match.MinimumPlayers do
                 state.Phase = "Lobby"
-                state.Announcement = "Esperando jugadores..."
+                state.Announcement = "ESPERANDO JUGADORES · MÁXIMO 20 POR SERVIDOR"
                 state.TimeLeft = 0
                 broadcast()
                 task.wait(2)
             end
-            countdown(Config.Match.IntermissionSeconds, "Intermission", "Prepará tu arma en el lobby")
-            local mapId = startVoting(#activePlayers())
+            countdown(Config.Match.IntermissionSeconds, "Intermission", "PREPARÁ TU ARSENAL · PRÓXIMA PARTIDA")
+            local mapId = startVoting()
             if mapId then startMatch(mapId) end
             task.wait(1)
         end
