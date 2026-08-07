@@ -1,0 +1,77 @@
+name: Sync Tinta Final game passes
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "scripts/sync_game_passes.py"
+      - "src/shared/GamePassConfig.lua"
+      - ".github/workflows/sync-game-passes.yml"
+
+concurrency:
+  group: tintafinal-game-passes
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  sync:
+    name: Crear y conectar Game Passes
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Descargar repositorio
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar requests
+        run: python -m pip install --disable-pip-version-check requests==2.32.4
+
+      - name: Sincronizar Game Passes
+        id: passes
+        continue-on-error: true
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        shell: bash
+        run: |
+          set +e
+          mkdir -p automation
+          python scripts/sync_game_passes.py 2>&1 | tee automation/game-passes.log
+          code=${PIPESTATUS[0]}
+          echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Guardar IDs y estado
+        if: always()
+        shell: bash
+        run: |
+          set -e
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/shared/GamePassConfig.lua automation/GAME_PASSES_STATUS.md automation/game-passes.json automation/game-passes.log 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No hay cambios de Game Passes para guardar."
+          else
+            git commit -m "Conectar Game Passes de Tinta Final"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Confirmar Game Passes
+        if: always()
+        shell: bash
+        run: |
+          if [ "${{ steps.passes.outputs.exit_code }}" != "0" ]; then
+            echo "Falló la sincronización de Game Passes. Revisá game-pass:read y game-pass:write."
+            exit 1
+          fi
+          grep -q 'Estado: CORRECTO' automation/GAME_PASSES_STATUS.md
+          echo "Game Passes conectados correctamente."
