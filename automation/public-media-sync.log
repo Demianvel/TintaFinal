@@ -1,0 +1,1 @@
+Roblox rechazó la carga de la portada pública: HTTP 403 - {"errors":[{"code":0,"message":"Forbidden"}]}. Los endpoints legacy de miniatura pública requieren el scope legacy-universe:manage en la API Key.
