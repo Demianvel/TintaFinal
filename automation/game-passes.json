@@ -1,0 +1,30 @@
+{
+  "universeId": 8973271699,
+  "passes": {
+    "BattlePassPremium": {
+      "gamePassId": 1940934333,
+      "name": "Tinta Final - Battle Pass Premium",
+      "priceRobux": 199
+    },
+    "VIP": {
+      "gamePassId": 1943244319,
+      "name": "Tinta Final - VIP",
+      "priceRobux": 299
+    },
+    "DoubleXP": {
+      "gamePassId": 1940370346,
+      "name": "Tinta Final - 2X XP",
+      "priceRobux": 149
+    },
+    "SpinBooster": {
+      "gamePassId": 1940538345,
+      "name": "Tinta Final - Lucky Spin Booster",
+      "priceRobux": 99
+    },
+    "Founder": {
+      "gamePassId": 1940004352,
+      "name": "Tinta Final - Founder Pack",
+      "priceRobux": 499
+    }
+  }
+}
