@@ -7,6 +7,7 @@ on:
     paths:
       - "assets/branding/**"
       - "scripts/sync_universe_thumbnails.py"
+      - "scripts/audit_thumbnail_personalization.py"
       - ".github/workflows/sync-universe-thumbnails.yml"
 
 concurrency:
@@ -49,6 +50,19 @@ jobs:
           echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
           exit 0
 
+      - name: Auditar personalización activa
+        id: personalization
+        continue-on-error: true
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        shell: bash
+        run: |
+          set +e
+          python scripts/audit_thumbnail_personalization.py 2>&1 | tee automation/thumbnail-personalization.log
+          code=${PIPESTATUS[0]}
+          echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
+          exit 0
+
       - name: Guardar resultado
         if: always()
         shell: bash
@@ -56,7 +70,7 @@ jobs:
           set -e
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add automation/UNIVERSE_THUMBNAILS_STATUS.md automation/universe-thumbnails.json automation/universe-thumbnails.log 2>/dev/null || true
+          git add automation/UNIVERSE_THUMBNAILS_STATUS.md automation/universe-thumbnails.json automation/universe-thumbnails.log automation/thumbnail-personalization.json automation/thumbnail-personalization.log 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "No hay cambios de miniaturas para guardar."
           else
@@ -73,6 +87,10 @@ jobs:
             echo "Falló la sincronización de miniaturas del universo."
             exit 1
           fi
+          if [ "${{ steps.personalization.outputs.exit_code }}" != "0" ]; then
+            echo "Falló la auditoría de personalización de miniaturas."
+            exit 1
+          fi
           grep -q 'Estado: CORRECTO' automation/UNIVERSE_THUMBNAILS_STATUS.md
           grep -q 'Miniaturas activas/reutilizadas: 5' automation/UNIVERSE_THUMBNAILS_STATUS.md
-          echo "Cinco miniaturas del universo conectadas sin duplicar."
+          echo "Miniaturas del universo auditadas y conectadas sin duplicar."
