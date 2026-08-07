@@ -5,7 +5,7 @@ return {
     UniverseId = 8973271699,
     Products = {
         TintaPackSmall = {
-            ProductId = 0,
+            ProductId = 3634449475,
             DisplayName = "25.000 Tinta Money",
             Description = "Paquete de moneda virtual para la tienda de Tinta Final.",
             PriceRobux = 25,
@@ -13,7 +13,7 @@ return {
             Amount = 25_000,
         },
         TintaPackMedium = {
-            ProductId = 0,
+            ProductId = 3634449541,
             DisplayName = "100.000 Tinta Money",
             Description = "Paquete mediano de Tinta Money.",
             PriceRobux = 75,
@@ -21,7 +21,7 @@ return {
             Amount = 100_000,
         },
         TintaPackMega = {
-            ProductId = 0,
+            ProductId = 3634449596,
             DisplayName = "500.000 Tinta Money",
             Description = "Paquete grande de Tinta Money para personalización y arsenal.",
             PriceRobux = 199,
@@ -29,7 +29,7 @@ return {
             Amount = 500_000,
         },
         Donation10 = {
-            ProductId = 0,
+            ProductId = 3634449676,
             DisplayName = "Apoyo 10 Robux",
             Description = "Apoya el desarrollo de Tinta Final y suma al ranking de donaciones.",
             PriceRobux = 10,
@@ -38,7 +38,7 @@ return {
             BonusTintaMoney = 2_500,
         },
         Donation50 = {
-            ProductId = 0,
+            ProductId = 3634449749,
             DisplayName = "Apoyo 50 Robux",
             Description = "Apoyo especial al desarrollo de Tinta Final.",
             PriceRobux = 50,
@@ -47,7 +47,7 @@ return {
             BonusTintaMoney = 15_000,
         },
         Donation100 = {
-            ProductId = 0,
+            ProductId = 3634449820,
             DisplayName = "Apoyo 100 Robux",
             Description = "Apoyo destacado al desarrollo de Tinta Final.",
             PriceRobux = 100,

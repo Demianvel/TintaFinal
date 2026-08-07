@@ -1,10 +1,38 @@
 Creando Tinta Final - 25K Tinta Money (25 Robux)...
-Traceback (most recent call last):
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 147, in <module>
-    main()
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 120, in main
-    item = create_product(spec)
-           ^^^^^^^^^^^^^^^^^^^^
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 93, in create_product
-    raise RuntimeError(f"No se pudo crear {spec['name']}: HTTP {response.status_code} - {response.text[:1500]}")
-RuntimeError: No se pudo crear Tinta Final - 25K Tinta Money: HTTP 415 - 
+Creando Tinta Final - 100K Tinta Money (75 Robux)...
+Creando Tinta Final - 500K Tinta Money (199 Robux)...
+Creando Tinta Final - Apoyo 10 (10 Robux)...
+Creando Tinta Final - Apoyo 50 (50 Robux)...
+Creando Tinta Final - Apoyo 100 (100 Robux)...
+{
+  "TintaPackSmall": {
+    "productId": 3634449475,
+    "name": "Tinta Final - 25K Tinta Money",
+    "priceRobux": 25
+  },
+  "TintaPackMedium": {
+    "productId": 3634449541,
+    "name": "Tinta Final - 100K Tinta Money",
+    "priceRobux": 75
+  },
+  "TintaPackMega": {
+    "productId": 3634449596,
+    "name": "Tinta Final - 500K Tinta Money",
+    "priceRobux": 199
+  },
+  "Donation10": {
+    "productId": 3634449676,
+    "name": "Tinta Final - Apoyo 10",
+    "priceRobux": 10
+  },
+  "Donation50": {
+    "productId": 3634449749,
+    "name": "Tinta Final - Apoyo 50",
+    "priceRobux": 50
+  },
+  "Donation100": {
+    "productId": 3634449820,
+    "name": "Tinta Final - Apoyo 100",
+    "priceRobux": 100
+  }
+}

@@ -1,0 +1,35 @@
+{
+  "universeId": 8973271699,
+  "products": {
+    "TintaPackSmall": {
+      "productId": 3634449475,
+      "name": "Tinta Final - 25K Tinta Money",
+      "priceRobux": 25
+    },
+    "TintaPackMedium": {
+      "productId": 3634449541,
+      "name": "Tinta Final - 100K Tinta Money",
+      "priceRobux": 75
+    },
+    "TintaPackMega": {
+      "productId": 3634449596,
+      "name": "Tinta Final - 500K Tinta Money",
+      "priceRobux": 199
+    },
+    "Donation10": {
+      "productId": 3634449676,
+      "name": "Tinta Final - Apoyo 10",
+      "priceRobux": 10
+    },
+    "Donation50": {
+      "productId": 3634449749,
+      "name": "Tinta Final - Apoyo 50",
+      "priceRobux": 50
+    },
+    "Donation100": {
+      "productId": 3634449820,
+      "name": "Tinta Final - Apoyo 100",
+      "priceRobux": 100
+    }
+  }
+}
