@@ -22,7 +22,8 @@ local function makePart(model, name, size, color, position)
     p.Size = size
     p.Color = color
     p.Material = Enum.Material.SmoothPlastic
-    p.CanCollide = name == "Torso" or name == "HumanoidRootPart"
+    p.CanCollide = name == "Torso"
+    p.Massless = name ~= "Torso"
     p.Anchored = false
     p.CFrame = CFrame.new(position)
     p.TopSurface = Enum.SurfaceType.Smooth
