@@ -1,0 +1,177 @@
+local LiveOpsConfig = {}
+
+LiveOpsConfig.Admin = {
+    OwnerUsername = "demianvelo",
+    OwnerUserId = 0, -- Se resuelve de forma segura por nombre al iniciar el servidor.
+    Prefix = "!",
+    RoleStore = "TintaFinal_AdminRoles_v1",
+    BanStore = "TintaFinal_Bans_v1",
+    AuditStore = "TintaFinal_AdminAudit_v1",
+    RoleLevels = {
+        Player = 0,
+        Moderator = 10,
+        Admin = 50,
+        Owner = 100,
+    },
+}
+
+LiveOpsConfig.Messaging = {
+    BusTopic = "TintaFinal.LiveOps.v1",
+    DirectTopicPrefix = "TintaFinal.DM.v1.",
+    DirectMessageMaxLength = 140,
+    DirectMessageCooldown = 3,
+    GlobalAnnouncementCooldown = 8,
+}
+
+LiveOpsConfig.Weather = {
+    AutoRotate = true,
+    RotationSeconds = 240,
+    Default = "ClearDay",
+    Order = { "ClearDay", "Noon", "Cloudy", "Sunset", "Night", "Rain", "Storm" },
+    Profiles = {
+        ClearDay = {
+            DisplayName = "DÍA DESPEJADO",
+            ClockTime = 9.5,
+            Brightness = 2.6,
+            Ambient = Color3.fromRGB(96, 104, 125),
+            OutdoorAmbient = Color3.fromRGB(125, 135, 155),
+            AtmosphereDensity = 0.22,
+            AtmosphereHaze = 1.1,
+            CloudsCover = 0.12,
+            CloudsDensity = 0.15,
+            RainIntensity = 0,
+            Wind = Vector3.new(2, 0, 1),
+        },
+        Noon = {
+            DisplayName = "MEDIODÍA",
+            ClockTime = 12.2,
+            Brightness = 3.0,
+            Ambient = Color3.fromRGB(112, 118, 138),
+            OutdoorAmbient = Color3.fromRGB(145, 150, 170),
+            AtmosphereDensity = 0.18,
+            AtmosphereHaze = 0.8,
+            CloudsCover = 0.06,
+            CloudsDensity = 0.10,
+            RainIntensity = 0,
+            Wind = Vector3.new(1, 0, 0),
+        },
+        Cloudy = {
+            DisplayName = "NUBLADO",
+            ClockTime = 15.0,
+            Brightness = 1.8,
+            Ambient = Color3.fromRGB(70, 78, 96),
+            OutdoorAmbient = Color3.fromRGB(88, 96, 112),
+            AtmosphereDensity = 0.34,
+            AtmosphereHaze = 2.2,
+            CloudsCover = 0.72,
+            CloudsDensity = 0.62,
+            RainIntensity = 0,
+            Wind = Vector3.new(6, 0, 3),
+        },
+        Sunset = {
+            DisplayName = "ATARDECER NEÓN",
+            ClockTime = 18.4,
+            Brightness = 2.0,
+            Ambient = Color3.fromRGB(105, 66, 88),
+            OutdoorAmbient = Color3.fromRGB(130, 78, 100),
+            AtmosphereDensity = 0.28,
+            AtmosphereHaze = 1.8,
+            CloudsCover = 0.28,
+            CloudsDensity = 0.28,
+            RainIntensity = 0,
+            Wind = Vector3.new(3, 0, -2),
+        },
+        Night = {
+            DisplayName = "NOCHE COMPETITIVA",
+            ClockTime = 22.0,
+            Brightness = 1.5,
+            Ambient = Color3.fromRGB(26, 32, 58),
+            OutdoorAmbient = Color3.fromRGB(38, 45, 72),
+            AtmosphereDensity = 0.30,
+            AtmosphereHaze = 1.6,
+            CloudsCover = 0.20,
+            CloudsDensity = 0.22,
+            RainIntensity = 0,
+            Wind = Vector3.new(4, 0, 1),
+        },
+        Rain = {
+            DisplayName = "LLUVIA",
+            ClockTime = 16.2,
+            Brightness = 1.45,
+            Ambient = Color3.fromRGB(50, 60, 75),
+            OutdoorAmbient = Color3.fromRGB(65, 74, 88),
+            AtmosphereDensity = 0.42,
+            AtmosphereHaze = 3.0,
+            CloudsCover = 0.86,
+            CloudsDensity = 0.78,
+            RainIntensity = 0.72,
+            Wind = Vector3.new(9, 0, 5),
+        },
+        Storm = {
+            DisplayName = "TORMENTA NOCTURNA",
+            ClockTime = 23.3,
+            Brightness = 1.05,
+            Ambient = Color3.fromRGB(20, 27, 48),
+            OutdoorAmbient = Color3.fromRGB(30, 39, 58),
+            AtmosphereDensity = 0.50,
+            AtmosphereHaze = 4.0,
+            CloudsCover = 1.0,
+            CloudsDensity = 0.92,
+            RainIntensity = 1.0,
+            Wind = Vector3.new(15, 0, 8),
+        },
+    },
+}
+
+LiveOpsConfig.Events = {
+    AutoRotate = true,
+    IntervalSeconds = 1_200,
+    DefaultDurationSeconds = 480,
+    Order = { "DoubleXP", "DoubleTinta", "LuckySpin", "StormNight", "GoldenHour" },
+    Definitions = {
+        DoubleXP = {
+            DisplayName = "DOBLE XP",
+            Announcement = "⚡ DOBLE XP ACTIVO · subí más rápido en el Battle Pass.",
+            XPMultiplier = 2.0,
+            TintaMultiplier = 1.0,
+            SpinLuckMultiplier = 1.0,
+        },
+        DoubleTinta = {
+            DisplayName = "FIEBRE TINTA MONEY",
+            Announcement = "💰 DOBLE TINTA MONEY ACTIVO en toda la experiencia.",
+            XPMultiplier = 1.0,
+            TintaMultiplier = 2.0,
+            SpinLuckMultiplier = 1.0,
+        },
+        LuckySpin = {
+            DisplayName = "RULETA AFORTUNADA",
+            Announcement = "🎰 LUCKY SPIN · aumentan las probabilidades de premios raros.",
+            XPMultiplier = 1.0,
+            TintaMultiplier = 1.0,
+            SpinLuckMultiplier = 1.8,
+        },
+        StormNight = {
+            DisplayName = "OPERACIÓN TORMENTA",
+            Announcement = "⛈️ OPERACIÓN TORMENTA · noche, lluvia y recompensas mejoradas.",
+            XPMultiplier = 1.25,
+            TintaMultiplier = 1.25,
+            SpinLuckMultiplier = 1.15,
+            Weather = "Storm",
+        },
+        GoldenHour = {
+            DisplayName = "HORA DORADA",
+            Announcement = "🌇 HORA DORADA · +50% Tinta Money durante el evento.",
+            XPMultiplier = 1.15,
+            TintaMultiplier = 1.5,
+            SpinLuckMultiplier = 1.1,
+            Weather = "Sunset",
+        },
+    },
+}
+
+LiveOpsConfig.Voice = {
+    Enabled = true,
+    DisplayName = "VOICE / MIC",
+}
+
+return LiveOpsConfig
