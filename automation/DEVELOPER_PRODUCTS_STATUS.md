@@ -4,34 +4,15 @@
 - Universe ID: 8973271699
 
 ```text
+Creando Tinta Final - 25K Tinta Money (25 Robux)...
 Traceback (most recent call last):
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 146, in <module>
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 147, in <module>
     main()
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 110, in main
-    existing = list_products()
-               ^^^^^^^^^^^^^^^
-  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 71, in list_products
-    response = requests.get(f"{API_ROOT}/creator", headers=headers(), params=params, timeout=60)
-               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 73, in get
-    return request("get", url, params=params, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/api.py", line 59, in request
-    return session.request(method=method, url=url, **kwargs)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 575, in request
-    prep = self.prepare_request(req)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/sessions.py", line 484, in prepare_request
-    p.prepare(
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 368, in prepare
-    self.prepare_headers(headers)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/models.py", line 490, in prepare_headers
-    check_header_validity(header)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1032, in check_header_validity
-    _validate_header_part(header, value, 1)
-  File "/opt/hostedtoolcache/Python/3.12.13/x64/lib/python3.12/site-packages/requests/utils.py", line 1048, in _validate_header_part
-    raise InvalidHeader(
-requests.exceptions.InvalidHeader: Invalid leading whitespace, reserved character(s), or return character(s) in header value: 'universe.place:write\n\ndeveloper-product:read\ndeveloper-product:write\n\nasset:read\nasset:write'
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 120, in main
+    item = create_product(spec)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/home/runner/work/TintaFinal/TintaFinal/scripts/sync_developer_products.py", line 93, in create_product
+    raise RuntimeError(f"No se pudo crear {spec['name']}: HTTP {response.status_code} - {response.text[:1500]}")
+RuntimeError: No se pudo crear Tinta Final - 25K Tinta Money: HTTP 415 - 
 
 ```
