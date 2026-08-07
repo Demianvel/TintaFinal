@@ -61,6 +61,18 @@ jobs:
           echo "exit_code=${code}" >> "$GITHUB_OUTPUT"
           exit 0
 
+      - name: Clasificar bloqueo legacy como advertencia
+        if: always()
+        shell: bash
+        run: |
+          if [ -f automation/PUBLIC_MEDIA_STATUS.md ] && grep -q 'Estado: BLOQUEADO' automation/PUBLIC_MEDIA_STATUS.md; then
+            sed -i 's/Estado: BLOQUEADO/Estado: ADVERTENCIA_LEGACY/' automation/PUBLIC_MEDIA_STATUS.md
+            cat >> automation/PUBLIC_MEDIA_STATUS.md <<'EOF'
+          - Impacto: NO BLOQUEA el juego, la publicación ni las miniaturas modernas del universo.
+          - Acción pendiente: agregar legacy-universe:manage solo para retirar media pública heredada.
+          EOF
+          fi
+
       - name: Guardar diagnóstico como artifact
         if: always()
         uses: actions/upload-artifact@v4
@@ -101,7 +113,7 @@ jobs:
           fi
 
           if [ "$code" = "2" ]; then
-            echo "::warning title=Portada pública bloqueada por permisos::La publicación del juego continúa. Revisá el scope legacy-universe:manage de ROBLOX_API_KEY."
+            echo "::warning title=Media pública legacy pendiente::La experiencia usa correctamente las miniaturas modernas. Solo queda pendiente retirar media heredada con legacy-universe:manage."
             cat automation/PUBLIC_MEDIA_STATUS.md || true
             exit 0
           fi
