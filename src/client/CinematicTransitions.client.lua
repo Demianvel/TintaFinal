@@ -32,7 +32,7 @@ image.Parent = overlay
 local tint = Instance.new("Frame")
 tint.Size = UDim2.fromScale(1, 1)
 tint.BackgroundColor3 = Color3.new(0, 0, 0)
-tint.BackgroundTransparency = 0.42
+tint.BackgroundTransparency = 0.38
 tint.Parent = overlay
 
 local title = Instance.new("TextLabel")
@@ -43,7 +43,7 @@ title.BackgroundTransparency = 1
 title.Font = Enum.Font.GothamBlack
 title.Text = "TINTA FINAL"
 title.TextColor3 = Color3.fromRGB(248, 250, 255)
-title.TextStrokeTransparency = 0.45
+title.TextStrokeTransparency = 0.42
 title.TextScaled = true
 title.TextTransparency = 1
 title.Parent = overlay
@@ -54,7 +54,7 @@ subtitle.Position = UDim2.fromScale(0.5, 0.56)
 subtitle.Size = UDim2.new(0.72, 0, 0, 42)
 subtitle.BackgroundTransparency = 1
 subtitle.Font = Enum.Font.GothamBold
-subtitle.Text = "COMPETITIVE ARENA"
+subtitle.Text = "PVP COMPETITIVO"
 subtitle.TextColor3 = Color3.fromRGB(0, 226, 239)
 subtitle.TextScaled = true
 subtitle.TextTransparency = 1
@@ -92,6 +92,11 @@ local mapNames = {
     RooftopRush = "AZOTEAS NEÓN",
 }
 
+local modeNames = {
+    TeamSplash = "10 VS 10 · CIAN VS MAGENTA",
+    FreeSplash = "TODOS CONTRA TODOS",
+}
+
 local function asset(id)
     id = tonumber(id) or 0
     return id > 0 and ("rbxassetid://" .. tostring(id)) or ""
@@ -100,7 +105,7 @@ end
 local function setArtwork(assetId)
     local value = asset(assetId)
     image.Image = value
-    image.ImageTransparency = value == "" and 1 or 0.03
+    image.ImageTransparency = value == "" and 1 or 0.02
 end
 
 local function fadeOut(token)
@@ -129,8 +134,8 @@ local function showCinematic(assetId, titleText, subtitleText, duration, useProg
     bar.BackgroundTransparency = useProgress and 0 or 1
     bar.Size = UDim2.fromScale(0, 1)
 
-    image.Size = UDim2.fromScale(1.04, 1.04)
-    image.Position = UDim2.fromScale(-0.02, -0.02)
+    image.Size = UDim2.fromScale(1.055, 1.055)
+    image.Position = UDim2.fromScale(-0.0275, -0.0275)
     TweenService:Create(image, TweenInfo.new(duration + 0.35, Enum.EasingStyle.Sine, Enum.EasingDirection.Out), {
         Size = UDim2.fromScale(1, 1),
         Position = UDim2.fromScale(0, 0),
@@ -154,18 +159,18 @@ local function handleState(state)
     lastPhase = phase
 
     local map = mapNames[state.CurrentMap] or tostring(state.CurrentMap or "ARENA")
-    local mode = tostring(state.Mode or state.CurrentGame or "COMPETITIVE")
+    local mode = modeNames[state.Mode] or "PVP COMPETITIVO"
 
     if phase == "Loading" then
-        showCinematic(Visual.Assets.Loading, "PREPARANDO LA BATALLA", map .. " · " .. mode, 3.8, true)
+        showCinematic(Visual.Assets.Loading, "ENTRANDO A LA BATALLA", map .. " · MAPA AUTOMÁTICO", 3.3, true)
     elseif phase == "Combat" then
         roundNumber += 1
         local roundAsset = roundNumber % 2 == 1 and Visual.Assets.Round1 or Visual.Assets.Round2
-        showCinematic(roundAsset, "RONDA " .. tostring(roundNumber), map .. " · " .. mode, 2.0, false)
+        showCinematic(roundAsset, "COMBATE PVP", map .. " · " .. mode, 1.85, false)
     elseif phase == "Results" then
-        showCinematic(Visual.Assets.Lobby, "RESULTADOS", tostring(state.Announcement or "FIN DE PARTIDA"), 2.7, false)
-    elseif phase == "Voting" then
-        showCinematic(Visual.Assets.Lobby, "ELEGÍ EL PRÓXIMO CAMPO", "VOTACIÓN DE MAPA", 1.5, false)
+        showCinematic(Visual.Assets.Lobby, "RESULTADOS", tostring(state.Announcement or "FIN DE PARTIDA"), 2.5, false)
+    elseif phase == "Waiting" then
+        roundNumber = 0
     elseif phase == "Intermission" then
         roundNumber = 0
     end
