@@ -64,7 +64,7 @@ function MonetizationService.ProcessReceipt(receiptInfo)
 end
 
 function MonetizationService.Bind(remoteFolder)
-    remotes = remoteFolder
+    remotes = remoteFolder or ReplicatedStorage:FindFirstChild("Remotes")
     MarketplaceService.ProcessReceipt = MonetizationService.ProcessReceipt
 end
 
