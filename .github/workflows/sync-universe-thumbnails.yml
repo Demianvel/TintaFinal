@@ -11,14 +11,14 @@ on:
 
 concurrency:
   group: tintafinal-universe-thumbnails
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 permissions:
   contents: write
 
 jobs:
   thumbnails:
-    name: Subir miniaturas reales del universo
+    name: Sincronizar miniaturas reales del universo
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -35,7 +35,7 @@ jobs:
       - name: Instalar dependencias
         run: python -m pip install --disable-pip-version-check requests==2.32.4 CairoSVG==2.8.2
 
-      - name: Subir miniaturas a Roblox
+      - name: Sincronizar miniaturas con Roblox
         id: thumbnails
         continue-on-error: true
         env:
@@ -70,8 +70,9 @@ jobs:
         shell: bash
         run: |
           if [ "${{ steps.thumbnails.outputs.exit_code }}" != "0" ]; then
-            echo "Falló la carga de miniaturas del universo."
+            echo "Falló la sincronización de miniaturas del universo."
             exit 1
           fi
           grep -q 'Estado: CORRECTO' automation/UNIVERSE_THUMBNAILS_STATUS.md
-          echo "Miniaturas del universo conectadas correctamente."
+          grep -q 'Miniaturas activas/reutilizadas: 5' automation/UNIVERSE_THUMBNAILS_STATUS.md
+          echo "Cinco miniaturas del universo conectadas sin duplicar."
