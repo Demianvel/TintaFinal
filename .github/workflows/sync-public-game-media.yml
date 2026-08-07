@@ -70,7 +70,7 @@ jobs:
             sed -i 's/Estado: BLOQUEADO/Estado: ADVERTENCIA_LEGACY/' automation/PUBLIC_MEDIA_STATUS.md
             cat >> automation/PUBLIC_MEDIA_STATUS.md <<'EOF'
           - Impacto: NO BLOQUEA el juego, la publicación ni las miniaturas modernas del universo.
-          - Acción pendiente: agregar legacy-universe:manage solo para retirar media pública heredada.
+          - Acción pendiente: revisar legacy-universe:manage solo si Roblox vuelve a responder 401/403.
           EOF
           fi
 
@@ -114,7 +114,13 @@ jobs:
           fi
 
           if [ "$code" = "2" ]; then
-            echo "::warning title=Media pública legacy pendiente::La experiencia usa correctamente las miniaturas modernas. Solo queda pendiente retirar media heredada con legacy-universe:manage."
+            echo "::warning title=Media pública legacy pendiente::Roblox rechazó una operación legacy. La experiencia y miniaturas modernas continúan operativas."
+            cat automation/PUBLIC_MEDIA_STATUS.md || true
+            exit 0
+          fi
+
+          if [ "$code" = "3" ]; then
+            echo "::notice title=Portada en procesamiento::Roblox ya aceptó la nueva portada. Se espera moderación/propagación sin subir copias adicionales."
             cat automation/PUBLIC_MEDIA_STATUS.md || true
             exit 0
           fi
