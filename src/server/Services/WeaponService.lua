@@ -11,6 +11,7 @@ local active = false
 local sessions = {}
 local callbacks = {}
 local random = Random.new()
+local lastMelee = {}
 
 local function session(player)
     local profile = ProfileService.Get(player)
@@ -52,28 +53,56 @@ end
 
 local function targetHumanoid(instance)
     local model = instance and instance:FindFirstAncestorOfClass("Model")
-    if not model then return nil, nil, nil end
+    if not model then return nil, nil, nil, false end
     local humanoid = model:FindFirstChildOfClass("Humanoid")
-    if not humanoid or humanoid.Health <= 0 then return nil, nil, nil end
-    return model, humanoid, Players:GetPlayerFromCharacter(model)
+    if not humanoid or humanoid.Health <= 0 then return nil, nil, nil, false end
+    local player = Players:GetPlayerFromCharacter(model)
+    return model, humanoid, player, model:GetAttribute("TintaBot") == true
 end
 
-local function friendlyFire(shooter, targetPlayer)
-    if not targetPlayer or shooter == targetPlayer then return shooter == targetPlayer end
-    local mode = workspace:GetAttribute("TintaFinalShooterMode")
-    if mode ~= "TeamSplash" then return false end
-    return shooter:GetAttribute("ShooterTeam") == targetPlayer:GetAttribute("ShooterTeam")
+local function targetTeam(model, player)
+    if player then return player:GetAttribute("ShooterTeam") end
+    return model and model:GetAttribute("ShooterTeam") or nil
 end
 
-local function canDamagePlayers()
+local function friendlyFire(shooter, model, targetPlayer)
+    if targetPlayer and shooter == targetPlayer then return true end
     local mode = workspace:GetAttribute("TintaFinalShooterMode")
-    return mode == "TeamSplash" or mode == "FreeSplash"
+    if mode ~= "TeamSplash" and mode ~= "Duel" then return false end
+    local shooterTeam = shooter:GetAttribute("ShooterTeam")
+    local otherTeam = targetTeam(model, targetPlayer)
+    return shooterTeam ~= nil and otherTeam ~= nil and shooterTeam == otherTeam
+end
+
+local function canDamageTargets()
+    local mode = workspace:GetAttribute("TintaFinalShooterMode")
+    return mode == "TeamSplash" or mode == "FreeSplash" or mode == "Duel"
 end
 
 local function visualShot(origin, destination, weaponId)
     if not remotes then return end
     local definition = Weapons[weaponId] or Weapons.InkRifle
     remotes.ShotFX:FireAllClients(origin, destination, definition.Accent)
+end
+
+local function registerDamage(player, model, humanoid, targetPlayer, isBot, damage, headshot)
+    if friendlyFire(player, model, targetPlayer) then return false, false end
+    local before = humanoid.Health
+    humanoid:TakeDamage(damage)
+    local dealt = math.max(0, math.min(before, damage))
+    local profile = ProfileService.Get(player)
+    if profile then profile.Stats.Damage += math.floor(dealt) end
+
+    local killed = before > 0 and humanoid.Health <= 0 and not model:GetAttribute("TintaKillRegistered")
+    if killed then
+        model:SetAttribute("TintaKillRegistered", true)
+        if targetPlayer and callbacks.OnPlayerKilled then
+            callbacks.OnPlayerKilled(player, targetPlayer, headshot)
+        elseif isBot and callbacks.OnBotKilled then
+            callbacks.OnBotKilled(player, model, headshot)
+        end
+    end
+    return dealt > 0, killed
 end
 
 function WeaponService.Initialize(remoteFolder, handlers)
@@ -85,6 +114,12 @@ function WeaponService.Initialize(remoteFolder, handlers)
     remotes.ReloadWeapon.OnServerEvent:Connect(function(player)
         WeaponService.Reload(player)
     end)
+    local meleeRemote = remotes:FindFirstChild("MeleeHit")
+    if meleeRemote then
+        meleeRemote.OnServerEvent:Connect(function(player)
+            WeaponService.Melee(player)
+        end)
+    end
 end
 
 function WeaponService.SetActive(value)
@@ -170,7 +205,7 @@ function WeaponService.Fire(player, origin, direction)
 
     local registeredHit = false
     local registeredHeadshot = false
-    local damageEnabled = canDamagePlayers()
+    local damageEnabled = canDamageTargets()
 
     for _ = 1, definition.Pellets do
         local shotDirection = spreadDirection(direction, definition.SpreadDegrees)
@@ -179,21 +214,14 @@ function WeaponService.Fire(player, origin, direction)
         visualShot(origin, hitPosition, current.WeaponId)
 
         if result and damageEnabled then
-            local model, targetHumanoidObject, targetPlayer = targetHumanoid(result.Instance)
-            if targetHumanoidObject and targetPlayer and not friendlyFire(player, targetPlayer) then
+            local model, targetHumanoidObject, targetPlayer, isBot = targetHumanoid(result.Instance)
+            if targetHumanoidObject and (targetPlayer or isBot) then
                 local headshot = result.Instance.Name == "Head"
                 local damage = definition.Damage * (headshot and definition.HeadshotMultiplier or 1)
-                local before = targetHumanoidObject.Health
-                targetHumanoidObject:TakeDamage(damage)
-                local dealt = math.max(0, math.min(before, damage))
-                local profile = ProfileService.Get(player)
-                if profile then profile.Stats.Damage += math.floor(dealt) end
-                registeredHit = true
-                registeredHeadshot = registeredHeadshot or headshot
-
-                if before > 0 and targetHumanoidObject.Health <= 0 and not model:GetAttribute("TintaKillRegistered") then
-                    model:SetAttribute("TintaKillRegistered", true)
-                    if callbacks.OnPlayerKilled then callbacks.OnPlayerKilled(player, targetPlayer, headshot) end
+                local hit = registerDamage(player, model, targetHumanoidObject, targetPlayer, isBot, damage, headshot)
+                if hit then
+                    registeredHit = true
+                    registeredHeadshot = registeredHeadshot or headshot
                 end
             end
         end
@@ -202,8 +230,67 @@ function WeaponService.Fire(player, origin, direction)
     if registeredHit and remotes then remotes.HitConfirm:FireClient(player, registeredHeadshot) end
 end
 
+function WeaponService.Melee(player)
+    if not active or not player:GetAttribute("InShooterMatch") then return end
+    local now = os.clock()
+    if now - (lastMelee[player] or 0) < 0.65 then return end
+    lastMelee[player] = now
+
+    local character = player.Character
+    local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+    local root = character and character:FindFirstChild("HumanoidRootPart")
+    if not humanoid or humanoid.Health <= 0 or not root then return end
+
+    local bestModel, bestHumanoid, bestPlayer, bestIsBot, bestDistance
+    for _, model in ipairs(workspace:GetChildren()) do
+        if model:IsA("Model") and model ~= character then
+            local targetHumanoidObject = model:FindFirstChildOfClass("Humanoid")
+            local targetRoot = model:FindFirstChild("HumanoidRootPart")
+            if targetHumanoidObject and targetHumanoidObject.Health > 0 and targetRoot then
+                local targetPlayer = Players:GetPlayerFromCharacter(model)
+                local isBot = model:GetAttribute("TintaBot") == true
+                if targetPlayer or isBot then
+                    local delta = targetRoot.Position - root.Position
+                    local distance = delta.Magnitude
+                    local facing = distance > 0 and root.CFrame.LookVector:Dot(delta.Unit) or 1
+                    if distance <= 7.5 and facing >= 0.05 and not friendlyFire(player, model, targetPlayer) then
+                        if not bestDistance or distance < bestDistance then
+                            bestModel, bestHumanoid, bestPlayer, bestIsBot, bestDistance = model, targetHumanoidObject, targetPlayer, isBot, distance
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    -- Bots normalmente viven dentro de una carpeta; revisar descendientes si no se encontró un objetivo directo.
+    if not bestModel then
+        local botFolder = workspace:FindFirstChild("TintaDuelBots")
+        for _, model in ipairs(botFolder and botFolder:GetChildren() or {}) do
+            local targetHumanoidObject = model:FindFirstChildOfClass("Humanoid")
+            local targetRoot = model:FindFirstChild("HumanoidRootPart")
+            if targetHumanoidObject and targetHumanoidObject.Health > 0 and targetRoot then
+                local delta = targetRoot.Position - root.Position
+                local distance = delta.Magnitude
+                local facing = distance > 0 and root.CFrame.LookVector:Dot(delta.Unit) or 1
+                if distance <= 7.5 and facing >= 0.05 and not friendlyFire(player, model, nil) then
+                    if not bestDistance or distance < bestDistance then
+                        bestModel, bestHumanoid, bestPlayer, bestIsBot, bestDistance = model, targetHumanoidObject, nil, true, distance
+                    end
+                end
+            end
+        end
+    end
+
+    if bestModel then
+        local hit = registerDamage(player, bestModel, bestHumanoid, bestPlayer, bestIsBot, 35, false)
+        if hit and remotes then remotes.HitConfirm:FireClient(player, false) end
+    end
+end
+
 function WeaponService.PlayerRemoving(player)
     sessions[player] = nil
+    lastMelee[player] = nil
 end
 
 return WeaponService
