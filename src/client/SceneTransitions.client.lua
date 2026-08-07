@@ -90,7 +90,53 @@ gradient.Color = ColorSequence.new({
 })
 gradient.Parent = progress
 
+-- Durante Combat usamos una tarjeta pequeña, nunca una imagen a pantalla completa.
+-- Así Round1/Round2 siguen usando sus Asset IDs reales sin ocultar la mira, el mapa
+-- ni los controles táctiles cuando empieza la ronda.
+local combatCard = Instance.new("Frame")
+combatCard.Name = "CombatRoundCard"
+combatCard.AnchorPoint = Vector2.new(0.5, 0)
+combatCard.Position = UDim2.new(0.5, 0, 0, 78)
+combatCard.Size = UDim2.fromOffset(430, 86)
+combatCard.BackgroundColor3 = Color3.fromRGB(5, 7, 14)
+combatCard.BackgroundTransparency = 0.10
+combatCard.BorderSizePixel = 0
+combatCard.Visible = false
+combatCard.Parent = gui
+local combatCorner = Instance.new("UICorner")
+combatCorner.CornerRadius = UDim.new(0, 13)
+combatCorner.Parent = combatCard
+local combatStroke = Instance.new("UIStroke")
+combatStroke.Color = Color3.fromRGB(0, 226, 239)
+combatStroke.Transparency = 0.28
+combatStroke.Thickness = 1.4
+combatStroke.Parent = combatCard
+
+local combatArt = Instance.new("ImageLabel")
+combatArt.Name = "RoundArt"
+combatArt.Position = UDim2.new(0, 7, 0, 7)
+combatArt.Size = UDim2.new(0, 128, 1, -14)
+combatArt.BackgroundTransparency = 1
+combatArt.ScaleType = Enum.ScaleType.Crop
+combatArt.ImageTransparency = 1
+combatArt.Parent = combatCard
+local artCorner = Instance.new("UICorner")
+artCorner.CornerRadius = UDim.new(0, 10)
+artCorner.Parent = combatArt
+
+local combatText = Instance.new("TextLabel")
+combatText.Position = UDim2.new(0, 146, 0, 8)
+combatText.Size = UDim2.new(1, -156, 1, -16)
+combatText.BackgroundTransparency = 1
+combatText.Font = Enum.Font.GothamBlack
+combatText.TextColor3 = Color3.fromRGB(248, 250, 255)
+combatText.TextScaled = true
+combatText.TextWrapped = true
+combatText.TextTransparency = 1
+combatText.Parent = combatCard
+
 local transitionToken = 0
+local combatCardToken = 0
 local lastPhase
 local lastMap
 local roundVisualIndex = 0
@@ -114,6 +160,15 @@ local allVisualIds = {
 task.spawn(function()
     VisualAssetResolver.Preload(allVisualIds)
 end)
+
+local function cancelFullScreen()
+    transitionToken += 1
+    root.Visible = false
+    root.BackgroundTransparency = 1
+    image.ImageTransparency = 1
+    shade.BackgroundTransparency = 1
+    status.TextTransparency = 1
+end
 
 local function show(assetId, text, duration, withProgress)
     transitionToken += 1
@@ -159,6 +214,38 @@ local function show(assetId, text, duration, withProgress)
     if token == transitionToken then root.Visible = false end
 end
 
+local function showCombatCard(assetId, text, duration)
+    combatCardToken += 1
+    local token = combatCardToken
+    cancelFullScreen()
+
+    combatCard.Visible = true
+    combatCard.BackgroundTransparency = 0.10
+    combatText.Text = text or "RONDA EN CURSO"
+    combatText.TextTransparency = 1
+    combatArt.Image = ""
+    combatArt.ImageTransparency = 1
+
+    local hasArt = (tonumber(assetId) or 0) > 0
+    if hasArt then
+        VisualAssetResolver.Apply(combatArt, assetId, 1.2)
+    end
+
+    TweenService:Create(combatText, TweenInfo.new(0.16), {TextTransparency = 0}):Play()
+    TweenService:Create(combatArt, TweenInfo.new(0.18), {ImageTransparency = hasArt and 0.04 or 1}):Play()
+    task.wait(duration)
+    if token ~= combatCardToken then return end
+
+    TweenService:Create(combatCard, TweenInfo.new(0.18), {BackgroundTransparency = 1}):Play()
+    TweenService:Create(combatText, TweenInfo.new(0.18), {TextTransparency = 1}):Play()
+    TweenService:Create(combatArt, TweenInfo.new(0.18), {ImageTransparency = 1}):Play()
+    task.wait(0.2)
+    if token == combatCardToken then
+        combatCard.Visible = false
+        combatCard.BackgroundTransparency = 0.10
+    end
+end
+
 local function showBoot()
     if bootShown then return end
     bootShown = true
@@ -183,10 +270,12 @@ local function handleState(state, force)
     if not changed then return end
 
     if phase == "Loading" then
+        combatCardToken += 1
+        combatCard.Visible = false
         task.spawn(show, Visual.Assets.Loading, "PREPARANDO LA BATALLA · " .. (mapNames[mapId] or "ARENA PVP"), 2.15, true)
     elseif phase == "Combat" then
         local artId, roundText = roundAsset()
-        task.spawn(show, artId, roundText, 1.35, false)
+        task.spawn(showCombatCard, artId, roundText, 1.10)
     elseif phase == "Warmup" then
         task.spawn(show, Visual.Assets.Lobby, "CALENTAMIENTO · MOVETE, APUNTÁ, DISPARÁ Y RECARGÁ", 1.15, false)
     elseif phase == "Results" then
@@ -214,4 +303,4 @@ task.spawn(function()
     end
 end)
 
-print("[TintaFinal] Imágenes y transiciones PvP cargadas con fallback visual.")
+print("[TintaFinal] Transiciones visuales: combate sin pantalla completa y Round1/Round2 en tarjeta compacta.")
