@@ -5,6 +5,7 @@ Safety rules:
 - Upload/confirm the new Tinta Final thumbnail first.
 - Only then delete the explicitly-known stale river image/thumbnail.
 - Never bulk-delete unknown creator media.
+- Production retry: public cover cleanup 2026-08-07.
 """
 
 from __future__ import annotations
@@ -88,8 +89,6 @@ def render() -> None:
 
 
 def upload_thumbnail() -> dict:
-    # Roblox legacy endpoints have used more than one multipart field name over time.
-    # We try only field-name variants; a successful request ends the loop immediately.
     attempts = []
     for field_name in ("file", "imageFile", "image"):
         with BUILD.open("rb") as handle:
@@ -133,7 +132,6 @@ def wait_for_new_image(before: set[int]) -> tuple[int, dict]:
 
 
 def order_new_first(new_image_id: int) -> dict:
-    # Ordering is best-effort; public-media verification is the source of truth.
     payloads = [
         {"imageIds": [new_image_id]},
         {"orderedImageIds": [new_image_id]},
@@ -190,7 +188,6 @@ def main() -> None:
     before_payload = public_media()
     before_ids = image_ids(before_payload)
 
-    # If the stale image is already gone and another public image exists, do not create duplicates.
     if STALE_RIVER_IMAGE_ID not in before_ids and before_ids:
         current_id = sorted(before_ids)[0]
         result = {
