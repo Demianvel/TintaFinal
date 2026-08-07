@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
-"""Replace stale public experience media with Tinta Final branding.
+"""Synchronize Tinta Final public experience media safely.
 
-Safety rules:
-- Discover the experience source language instead of hardcoding a locale.
-- Upload/confirm the new Tinta Final thumbnail first.
-- Only then delete the explicitly-known stale river image/thumbnail.
-- Never bulk-delete unknown creator media.
-- Permission blocks are persisted as diagnostics instead of being confused with code failures.
+The legacy upload endpoint can accept an image before it becomes visible in the
+public media list. This script therefore distinguishes Roblox processing from
+real errors and never uploads another copy while a previous accepted upload is
+still pending.
 """
 
 from __future__ import annotations
@@ -14,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 
 import cairosvg
@@ -44,6 +43,10 @@ REQUIRED_LEGACY_SCOPE = "legacy-universe:manage"
 
 class PermissionBlocked(RuntimeError):
     pass
+
+
+def utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
 
 
 def key() -> str:
@@ -81,13 +84,23 @@ def image_ids(payload: dict) -> set[int]:
     return output
 
 
+def previous_upload_pending() -> bool:
+    if not STATUS.is_file():
+        return False
+    text = STATUS.read_text(encoding="utf-8", errors="ignore").lower()
+    return (
+        "pendiente_roblox" in text
+        or "roblox aceptó la carga pero no apareció" in text
+        or "roblox acepto la carga pero no aparecio" in text
+    )
+
+
 def _add_language_candidate(output: list[str], value: object) -> None:
     if not isinstance(value, str):
         return
     value = value.strip().lower().replace("_", "-")
     if not value:
         return
-    # Roblox's legacy endpoint expects a language code, not necessarily a full locale.
     short = value.split("-", 1)[0]
     for candidate in (short, value):
         if candidate and candidate not in output:
@@ -97,8 +110,7 @@ def _add_language_candidate(output: list[str], value: object) -> None:
 def _walk_language_payload(value: object, output: list[str]) -> None:
     if isinstance(value, dict):
         for key_name, child in value.items():
-            normalized_key = str(key_name).lower()
-            if normalized_key in {
+            if str(key_name).lower() in {
                 "languagecode",
                 "language_code",
                 "language",
@@ -114,14 +126,11 @@ def _walk_language_payload(value: object, output: list[str]) -> None:
 
 
 def language_candidates() -> tuple[list[str], dict]:
-    diagnostics: dict = {}
     candidates: list[str] = []
+    diagnostics: dict = {}
     try:
         response = requests.get(SOURCE_LANGUAGE_URL, headers={"Accept": "application/json"}, timeout=60)
-        diagnostics = {
-            "statusCode": response.status_code,
-            "body": response.text[:3000],
-        }
+        diagnostics = {"statusCode": response.status_code, "body": response.text[:3000]}
         if response.ok:
             try:
                 payload = response.json()
@@ -132,8 +141,6 @@ def language_candidates() -> tuple[list[str], dict]:
     except requests.RequestException as exc:
         diagnostics = {"error": str(exc)}
 
-    # Conservative fallbacks. Two-letter codes are tried first because the legacy
-    # thumbnail endpoint rejects some locale-style values such as en-us.
     for fallback in ("es", "en", "pt", "fr", "de"):
         if fallback not in candidates:
             candidates.append(fallback)
@@ -157,7 +164,7 @@ def render() -> None:
 def legacy_permission_error(action: str, response: requests.Response) -> PermissionBlocked:
     return PermissionBlocked(
         f"Roblox rechazó {action}: HTTP {response.status_code} - {response.text[:900]}. "
-        f"Los endpoints legacy de miniatura pública requieren el scope {REQUIRED_LEGACY_SCOPE} en la API Key."
+        f"Revisá el scope {REQUIRED_LEGACY_SCOPE} en la API Key."
     )
 
 
@@ -176,14 +183,13 @@ def upload_thumbnail(candidates: list[str]) -> dict:
                     files={field_name: (BUILD.name, handle, "image/png")},
                     timeout=120,
                 )
-            attempts.append(
-                {
-                    "languageCode": language_code,
-                    "field": field_name,
-                    "statusCode": response.status_code,
-                    "body": response.text[:1600],
-                }
-            )
+            attempt = {
+                "languageCode": language_code,
+                "field": field_name,
+                "statusCode": response.status_code,
+                "body": response.text[:1600],
+            }
+            attempts.append(attempt)
             if response.ok:
                 try:
                     payload = response.json()
@@ -198,7 +204,6 @@ def upload_thumbnail(candidates: list[str]) -> dict:
                 }
             if response.status_code in (401, 403):
                 raise legacy_permission_error("la carga de la portada pública", response)
-            # Invalid language code: move immediately to next candidate.
             if response.status_code == 400 and "invalid language code" in response.text.lower():
                 break
             if response.status_code not in (400, 404, 415, 422):
@@ -206,18 +211,18 @@ def upload_thumbnail(candidates: list[str]) -> dict:
     raise RuntimeError("No se pudo subir la portada pública: " + json.dumps(attempts, ensure_ascii=False))
 
 
-def wait_for_new_image(before: set[int]) -> tuple[int, dict]:
+def wait_for_new_image(before: set[int], checks: int = 30) -> tuple[int, dict] | tuple[None, dict]:
     last = {}
-    for _ in range(30):
+    for _ in range(checks):
         time.sleep(2)
         last = public_media()
         candidates = image_ids(last) - before
         if candidates:
             return sorted(candidates)[-1], last
-    raise TimeoutError(f"Roblox aceptó la carga pero no apareció una nueva imageId: {last}")
+    return None, last
 
 
-def order_new_first(language_code: str, new_image_id: int) -> dict:
+def request_order(language_code: str, new_image_id: int) -> dict:
     attempts = []
     for payload in ({"imageIds": [new_image_id]}, {"orderedImageIds": [new_image_id]}):
         response = requests.post(
@@ -226,14 +231,22 @@ def order_new_first(language_code: str, new_image_id: int) -> dict:
             json=payload,
             timeout=60,
         )
-        attempts.append(
-            {"payload": payload, "statusCode": response.status_code, "body": response.text[:1000]}
-        )
+        attempts.append({"payload": payload, "statusCode": response.status_code, "body": response.text[:1000]})
         if response.ok:
             return {"success": True, "attempts": attempts}
         if response.status_code in (401, 403):
             raise legacy_permission_error("el orden de miniaturas públicas", response)
     return {"success": False, "attempts": attempts}
+
+
+def order_with_candidates(candidates: list[str], new_image_id: int) -> tuple[str, dict]:
+    all_attempts = []
+    for language_code in candidates:
+        result = request_order(language_code, new_image_id)
+        all_attempts.extend(result.get("attempts") or [])
+        if result.get("success"):
+            return language_code, {"success": True, "attempts": all_attempts}
+    return candidates[0], {"success": False, "attempts": all_attempts}
 
 
 def delete_stale_public_image(language_code: str) -> dict:
@@ -258,9 +271,9 @@ def delete_stale_personalized_thumbnail() -> dict:
         params=[("homepageThumbnailIds", STALE_RIVER_HOMEPAGE_THUMBNAIL_ID)],
         timeout=60,
     )
-    response_text = response.text.lower()
+    text = response.text.lower()
     if response.status_code in (200, 204, 400, 404) or (
-        response.status_code == 403 and "invalid thumbnail id" in response_text
+        response.status_code == 403 and "invalid thumbnail id" in text
     ):
         return {"statusCode": response.status_code, "body": response.text[:1000]}
     if response.status_code in (401, 403):
@@ -288,6 +301,7 @@ def write_status(
         f"- Nueva imageId: {new_image_id if new_image_id > 0 else 'NO_GENERADA'}\n"
         f"- River imageId objetivo: {STALE_RIVER_IMAGE_ID}\n"
         f"- Scope legacy requerido: {REQUIRED_LEGACY_SCOPE}\n"
+        f"- Actualizado UTC: {utc_now()}\n"
         f"- Detalle: {detail}\n",
         encoding="utf-8",
     )
@@ -298,65 +312,153 @@ def write_result(payload: dict) -> None:
     RESULT.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
+def finish_existing_new_media(before_payload: dict, new_ids: set[int]) -> None:
+    new_image_id = sorted(new_ids)[-1]
+    candidates, language_diag = language_candidates()
+    language_code, order_result = order_with_candidates(candidates, new_image_id)
+    stale_public_result = delete_stale_public_image(language_code)
+    stale_personalized_result = delete_stale_personalized_thumbnail()
+    time.sleep(2)
+    final_media = public_media()
+    final_ids = image_ids(final_media)
+    if STALE_RIVER_IMAGE_ID in final_ids:
+        raise RuntimeError("La portada nueva ya apareció, pero la imagen vieja del río continúa activa.")
+    write_result(
+        {
+            "mode": "REEMPLAZADO_DESDE_PENDIENTE",
+            "languageDiscovery": language_diag,
+            "languageCode": language_code,
+            "newImageId": new_image_id,
+            "order": order_result,
+            "deleteStalePublic": stale_public_result,
+            "deleteStalePersonalized": stale_personalized_result,
+            "before": before_payload,
+            "final": final_media,
+        }
+    )
+    write_status(
+        "CORRECTO",
+        "La portada previamente aceptada por Roblox apareció y la escena vieja del río fue retirada.",
+        new_image_id,
+        language_code,
+    )
+
+
 def main() -> None:
     before_payload = public_media()
     before_ids = image_ids(before_payload)
+    visible_new_ids = before_ids - {STALE_RIVER_IMAGE_ID}
+
+    if visible_new_ids:
+        finish_existing_new_media(before_payload, visible_new_ids)
+        return
 
     if STALE_RIVER_IMAGE_ID not in before_ids and before_ids:
         current_id = sorted(before_ids)[0]
-        write_result(
-            {"mode": "REUTILIZADO", "before": before_payload, "after": before_payload, "newImageId": current_id}
-        )
-        write_status(
-            "CORRECTO",
-            "La imagen vieja ya no está activa; se reutiliza la portada pública actual.",
-            current_id,
-        )
+        write_result({"mode": "REUTILIZADO", "before": before_payload, "newImageId": current_id})
+        write_status("CORRECTO", "La imagen vieja ya no está activa.", current_id)
         return
 
+    # The previous workflow already got HTTP success from Roblox. Do not upload a
+    # second copy while moderation/CDN propagation is pending.
+    if previous_upload_pending():
+        candidates, language_diag = language_candidates()
+        write_result(
+            {
+                "mode": "PENDIENTE_ROBLOX",
+                "checkedAt": utc_now(),
+                "languageDiscovery": language_diag,
+                "languageCandidates": candidates,
+                "publicMedia": before_payload,
+            }
+        )
+        write_status(
+            "PENDIENTE_ROBLOX",
+            "Roblox ya aceptó una portada nueva y todavía la está procesando/moderando. No se subió otra copia.",
+            0,
+            candidates[0] if candidates else "NO_DETECTADO",
+        )
+        raise SystemExit(3)
+
     render()
-    candidates, language_diagnostics = language_candidates()
+    candidates, language_diag = language_candidates()
     upload_result = upload_thumbnail(candidates)
     language_code = upload_result["languageCode"]
-    new_image_id, after_upload = wait_for_new_image(before_ids)
-    order_result = order_new_first(language_code, new_image_id)
-    stale_public_result = (
-        delete_stale_public_image(language_code)
-        if STALE_RIVER_IMAGE_ID in before_ids
-        else {"skipped": True}
-    )
-    stale_personalized_result = delete_stale_personalized_thumbnail()
 
+    # Persist the accepted upload before waiting so a timeout cannot lose the
+    # information and cause a duplicate on the next run.
+    write_result(
+        {
+            "mode": "CARGA_ACEPTADA_ESPERANDO_ROBLOX",
+            "acceptedAt": utc_now(),
+            "languageDiscovery": language_diag,
+            "languageCandidates": candidates,
+            "languageCode": language_code,
+            "upload": upload_result,
+            "before": before_payload,
+        }
+    )
+    write_status(
+        "PENDIENTE_ROBLOX",
+        "Roblox aceptó la portada nueva. Esperando moderación/propagación antes de retirar la imagen vieja.",
+        0,
+        language_code,
+    )
+
+    new_image_id, after_upload = wait_for_new_image(before_ids)
+    if new_image_id is None:
+        write_result(
+            {
+                "mode": "PENDIENTE_ROBLOX",
+                "acceptedAt": utc_now(),
+                "languageDiscovery": language_diag,
+                "languageCandidates": candidates,
+                "languageCode": language_code,
+                "upload": upload_result,
+                "before": before_payload,
+                "lastPublicMedia": after_upload,
+            }
+        )
+        write_status(
+            "PENDIENTE_ROBLOX",
+            "Roblox aceptó la carga pero todavía no publicó una nueva imageId. No se volverá a subir otra copia.",
+            0,
+            language_code,
+        )
+        raise SystemExit(3)
+
+    order_result = request_order(language_code, new_image_id)
+    stale_public_result = delete_stale_public_image(language_code)
+    stale_personalized_result = delete_stale_personalized_thumbnail()
     time.sleep(2)
     final_media = public_media()
     final_ids = image_ids(final_media)
     if new_image_id not in final_ids:
-        raise RuntimeError(f"La portada nueva {new_image_id} no figura en la media final: {final_media}")
+        raise RuntimeError(f"La portada nueva {new_image_id} no figura en la media final.")
     if STALE_RIVER_IMAGE_ID in final_ids:
         raise RuntimeError("La imagen vieja del río continúa en la media pública después del reemplazo.")
 
-    result = {
-        "mode": "REEMPLAZADO",
-        "languageDiscovery": language_diagnostics,
-        "languageCandidates": candidates,
-        "languageCode": language_code,
-        "before": before_payload,
-        "upload": upload_result,
-        "afterUpload": after_upload,
-        "newImageId": new_image_id,
-        "order": order_result,
-        "deleteStalePublic": stale_public_result,
-        "deleteStalePersonalized": stale_personalized_result,
-        "final": final_media,
-    }
-    write_result(result)
+    write_result(
+        {
+            "mode": "REEMPLAZADO",
+            "languageDiscovery": language_diag,
+            "languageCandidates": candidates,
+            "languageCode": language_code,
+            "before": before_payload,
+            "upload": upload_result,
+            "newImageId": new_image_id,
+            "order": order_result,
+            "deleteStalePublic": stale_public_result,
+            "deleteStalePersonalized": stale_personalized_result,
+            "final": final_media,
+        }
+    )
     write_status(
         "CORRECTO",
         "Portada Tinta Final confirmada y escena del río retirada.",
         new_image_id,
         language_code,
     )
-    print(json.dumps(result, indent=2, ensure_ascii=False))
 
 
 if __name__ == "__main__":
