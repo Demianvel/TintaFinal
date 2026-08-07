@@ -7,6 +7,7 @@ local ProfileService = require(script.Parent.ProfileService)
 local RankingService = require(script.Parent.RankingService)
 
 local MonetizationService = {}
+local remotes
 
 local function productById(productId)
     productId = tonumber(productId) or 0
@@ -44,9 +45,7 @@ end
 
 function MonetizationService.ProcessReceipt(receiptInfo)
     local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
-    if not player then
-        return Enum.ProductPurchaseDecision.NotProcessedYet
-    end
+    if not player then return Enum.ProductPurchaseDecision.NotProcessedYet end
 
     local product = productById(receiptInfo.ProductId)
     if not product then
@@ -55,17 +54,17 @@ function MonetizationService.ProcessReceipt(receiptInfo)
     end
 
     local success = ProfileService.ApplyDeveloperProduct(player, receiptInfo.PurchaseId, product)
-    if not success then
-        return Enum.ProductPurchaseDecision.NotProcessedYet
-    end
+    if not success then return Enum.ProductPurchaseDecision.NotProcessedYet end
 
-    task.spawn(function()
-        RankingService.RecordPlayer(player)
-    end)
+    if remotes and remotes:FindFirstChild("ProfileState") then
+        remotes.ProfileState:FireClient(player, ProfileService.Public(player))
+    end
+    task.spawn(RankingService.RecordPlayer, player)
     return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
-function MonetizationService.Bind()
+function MonetizationService.Bind(remoteFolder)
+    remotes = remoteFolder
     MarketplaceService.ProcessReceipt = MonetizationService.ProcessReceipt
 end
 
