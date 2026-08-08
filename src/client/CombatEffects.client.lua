@@ -17,6 +17,8 @@ local WHITE = Color3.fromRGB(255, 250, 225)
 
 local lastAmmo = {}
 local recoilToken = 0
+local lastMuzzleAt = 0
+local lastMuzzleOrigin
 
 local function cameraKick(strength)
     local camera = workspace.CurrentCamera
@@ -68,13 +70,7 @@ local function emitMuzzleFire(origin, destination, accent)
     light.Shadows = false
     light.Parent = core
 
-    local flash = makePart(
-        "TintaMuzzleFlame",
-        Vector3.new(0.22, 0.22, 1.8),
-        CFrame.lookAt(muzzle + direction * 0.9, muzzle + direction * 3),
-        FIRE_YELLOW,
-        0.02
-    )
+    local flash = makePart("TintaMuzzleFlame", Vector3.new(0.22, 0.22, 1.8), CFrame.lookAt(muzzle + direction * 0.9, muzzle + direction * 3), FIRE_YELLOW, 0.02)
 
     local attachment = Instance.new("Attachment")
     attachment.Parent = core
@@ -184,10 +180,9 @@ local function fieryProjectile(origin, destination, accent)
     glow.Parent = bullet
 
     local duration = math.clamp(distance / 900, 0.045, 0.18)
-    local tween = TweenService:Create(bullet, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+    TweenService:Create(bullet, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
         CFrame = CFrame.lookAt(endPos, endPos + direction),
-    })
-    tween:Play()
+    }):Play()
 
     Debris:AddItem(bullet, duration + 0.16)
 end
@@ -221,13 +216,7 @@ local function slashSegment(origin, direction, sideOffset, verticalOffset, color
     local startPos = origin + right * sideOffset + Vector3.new(0, verticalOffset, 0)
     local endPos = startPos + direction * 5.2 + right * (-sideOffset * 0.7)
     local distance = (endPos - startPos).Magnitude
-    local slash = makePart(
-        "TintaMeleeSlash",
-        Vector3.new(0.10, 0.22, distance),
-        CFrame.lookAt((startPos + endPos) / 2, endPos),
-        color or CYAN,
-        0.08
-    )
+    local slash = makePart("TintaMeleeSlash", Vector3.new(0.10, 0.22, distance), CFrame.lookAt((startPos + endPos) / 2, endPos), color or CYAN, 0.08)
     Debris:AddItem(slash, 0.12)
 end
 
@@ -244,7 +233,13 @@ end
 
 shotFX.OnClientEvent:Connect(function(origin, destination, color)
     local accent = typeof(color) == "Color3" and color or CYAN
-    emitMuzzleFire(origin, destination, accent)
+    local now = os.clock()
+    local sameOrigin = typeof(origin) == "Vector3" and typeof(lastMuzzleOrigin) == "Vector3" and (origin - lastMuzzleOrigin).Magnitude < 0.75
+    if not sameOrigin or now - lastMuzzleAt >= 0.035 then
+        emitMuzzleFire(origin, destination, accent)
+        lastMuzzleAt = now
+        lastMuzzleOrigin = origin
+    end
     fieryProjectile(origin, destination, accent)
     impactSpark(destination, accent)
 end)
@@ -266,6 +261,8 @@ meleeFX.OnClientEvent:Connect(meleeVisual)
 
 player.CharacterAdded:Connect(function()
     lastAmmo = {}
+    lastMuzzleAt = 0
+    lastMuzzleOrigin = nil
 end)
 
-print("[TintaFinal] Combat FX v2: munición de fuego, destello, impacto y retroceso activos.")
+print("[TintaFinal] Combat FX v2: munición de fuego, destello, impacto y retroceso activos sin duplicar muzzle flash por perdigones.")
