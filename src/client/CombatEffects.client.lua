@@ -10,47 +10,13 @@ local ammoState = remotes:WaitForChild("AmmoState")
 local meleeFX = remotes:WaitForChild("MeleeFX")
 
 local CYAN = Color3.fromRGB(0, 226, 239)
-local ORANGE = Color3.fromRGB(255, 170, 35)
+local ORANGE = Color3.fromRGB(255, 132, 21)
+local FIRE_YELLOW = Color3.fromRGB(255, 226, 66)
+local FIRE_RED = Color3.fromRGB(255, 72, 18)
 local WHITE = Color3.fromRGB(255, 250, 225)
 
 local lastAmmo = {}
-local shoulderBases = setmetatable({}, {__mode = "k"})
 local recoilToken = 0
-
-local function shoulderMotor(character)
-    if not character then return nil end
-    local torso = character:FindFirstChild("UpperTorso") or character:FindFirstChild("Torso")
-    if not torso then return nil end
-    return torso:FindFirstChild("RightShoulder") or torso:FindFirstChild("Right Shoulder")
-end
-
-local function animateShoulder(character, style)
-    local shoulder = shoulderMotor(character)
-    if not shoulder then return end
-
-    local base = shoulderBases[shoulder]
-    if not base then
-        base = shoulder.C0
-        shoulderBases[shoulder] = base
-    end
-
-    local target
-    local outTime
-    if style == "melee" then
-        target = base * CFrame.Angles(math.rad(-42), math.rad(-18), math.rad(34))
-        outTime = 0.11
-    else
-        target = base * CFrame.Angles(math.rad(-8), math.rad(2), math.rad(6))
-        outTime = 0.045
-    end
-
-    shoulder.C0 = target
-    task.delay(outTime, function()
-        if shoulder.Parent then
-            TweenService:Create(shoulder, TweenInfo.new(style == "melee" and 0.16 or 0.08, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), {C0 = base}):Play()
-        end
-    end)
-end
 
 local function cameraKick(strength)
     local camera = workspace.CurrentCamera
@@ -69,7 +35,7 @@ local function cameraKick(strength)
     end)
 end
 
-local function makeFlashPart(name, size, cframe, color, transparency)
+local function makePart(name, size, cframe, color, transparency)
     local part = Instance.new("Part")
     part.Name = name
     part.Anchored = true
@@ -85,49 +51,168 @@ local function makeFlashPart(name, size, cframe, color, transparency)
     return part
 end
 
-local function muzzleFlash(origin, destination, accent)
+local function emitMuzzleFire(origin, destination, accent)
     if typeof(origin) ~= "Vector3" or typeof(destination) ~= "Vector3" then return end
     local delta = destination - origin
     if delta.Magnitude < 0.1 then return end
     local direction = delta.Unit
-    local muzzle = origin + direction * 1.7
+    local muzzle = origin + direction * 1.8
 
-    local core = makeFlashPart("TintaMuzzleCore", Vector3.new(0.34, 0.34, 0.34), CFrame.new(muzzle), WHITE, 0.02)
+    local core = makePart("TintaMuzzleCore", Vector3.new(0.44, 0.44, 0.44), CFrame.new(muzzle), WHITE, 0.01)
     core.Shape = Enum.PartType.Ball
+
     local light = Instance.new("PointLight")
-    light.Color = accent or CYAN
-    light.Brightness = 3.5
-    light.Range = 12
+    light.Color = FIRE_YELLOW
+    light.Brightness = 5.5
+    light.Range = 16
     light.Shadows = false
     light.Parent = core
 
-    local length = 1.35
-    local streak = makeFlashPart(
-        "TintaMuzzleStreak",
-        Vector3.new(0.13, 0.13, length),
-        CFrame.lookAt(muzzle + direction * (length * 0.5), muzzle + direction * 2),
-        accent or ORANGE,
-        0.05
+    local flash = makePart(
+        "TintaMuzzleFlame",
+        Vector3.new(0.22, 0.22, 1.8),
+        CFrame.lookAt(muzzle + direction * 0.9, muzzle + direction * 3),
+        FIRE_YELLOW,
+        0.02
     )
 
     local attachment = Instance.new("Attachment")
     attachment.Parent = core
-    local sparks = Instance.new("ParticleEmitter")
-    sparks.Rate = 0
-    sparks.Lifetime = NumberRange.new(0.05, 0.11)
-    sparks.Speed = NumberRange.new(5, 11)
-    sparks.SpreadAngle = Vector2.new(28, 28)
-    sparks.LightEmission = 1
-    sparks.Color = ColorSequence.new(accent or CYAN, WHITE)
-    sparks.Size = NumberSequence.new({
-        NumberSequenceKeypoint.new(0, 0.14),
+
+    local flame = Instance.new("ParticleEmitter")
+    flame.Name = "FireBurst"
+    flame.Rate = 0
+    flame.Lifetime = NumberRange.new(0.06, 0.16)
+    flame.Speed = NumberRange.new(7, 15)
+    flame.SpreadAngle = Vector2.new(22, 22)
+    flame.LightEmission = 1
+    flame.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, WHITE),
+        ColorSequenceKeypoint.new(0.28, FIRE_YELLOW),
+        ColorSequenceKeypoint.new(0.70, ORANGE),
+        ColorSequenceKeypoint.new(1, FIRE_RED),
+    })
+    flame.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.34),
+        NumberSequenceKeypoint.new(0.45, 0.18),
         NumberSequenceKeypoint.new(1, 0),
     })
-    sparks.Parent = attachment
-    sparks:Emit(9)
+    flame.Parent = attachment
+    flame:Emit(14)
 
-    Debris:AddItem(core, 0.09)
-    Debris:AddItem(streak, 0.055)
+    local inkSparks = Instance.new("ParticleEmitter")
+    inkSparks.Name = "InkSparks"
+    inkSparks.Rate = 0
+    inkSparks.Lifetime = NumberRange.new(0.05, 0.13)
+    inkSparks.Speed = NumberRange.new(5, 12)
+    inkSparks.SpreadAngle = Vector2.new(34, 34)
+    inkSparks.LightEmission = 1
+    inkSparks.Color = ColorSequence.new(accent or CYAN, WHITE)
+    inkSparks.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.13),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    inkSparks.Parent = attachment
+    inkSparks:Emit(8)
+
+    Debris:AddItem(core, 0.14)
+    Debris:AddItem(flash, 0.07)
+end
+
+local function fieryProjectile(origin, destination, accent)
+    if typeof(origin) ~= "Vector3" or typeof(destination) ~= "Vector3" then return end
+    local delta = destination - origin
+    local distance = delta.Magnitude
+    if distance < 1 then return end
+
+    local direction = delta.Unit
+    local start = origin + direction * 2.1
+    local endPos = destination
+    local bullet = makePart("TintaFireAmmo", Vector3.new(0.24, 0.24, 0.55), CFrame.lookAt(start, endPos), FIRE_YELLOW, 0.02)
+    bullet.Shape = Enum.PartType.Ball
+
+    local back = Instance.new("Attachment")
+    back.Position = Vector3.new(0, 0, 0.20)
+    back.Parent = bullet
+    local front = Instance.new("Attachment")
+    front.Position = Vector3.new(0, 0, -0.20)
+    front.Parent = bullet
+
+    local trail = Instance.new("Trail")
+    trail.Attachment0 = back
+    trail.Attachment1 = front
+    trail.Lifetime = 0.10
+    trail.MinLength = 0.04
+    trail.LightEmission = 1
+    trail.FaceCamera = true
+    trail.Color = ColorSequence.new({
+        ColorSequenceKeypoint.new(0, accent or CYAN),
+        ColorSequenceKeypoint.new(0.35, FIRE_YELLOW),
+        ColorSequenceKeypoint.new(1, FIRE_RED),
+    })
+    trail.Transparency = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.02),
+        NumberSequenceKeypoint.new(1, 1),
+    })
+    trail.WidthScale = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 1),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    trail.Parent = bullet
+
+    local flameAttachment = Instance.new("Attachment")
+    flameAttachment.Parent = bullet
+    local fire = Instance.new("ParticleEmitter")
+    fire.Name = "ProjectileFire"
+    fire.Rate = 80
+    fire.Lifetime = NumberRange.new(0.05, 0.11)
+    fire.Speed = NumberRange.new(0.5, 1.7)
+    fire.LightEmission = 1
+    fire.SpreadAngle = Vector2.new(180, 180)
+    fire.Color = ColorSequence.new(FIRE_YELLOW, FIRE_RED)
+    fire.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.25),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    fire.Parent = flameAttachment
+
+    local glow = Instance.new("PointLight")
+    glow.Color = FIRE_YELLOW
+    glow.Brightness = 2.2
+    glow.Range = 7
+    glow.Shadows = false
+    glow.Parent = bullet
+
+    local duration = math.clamp(distance / 900, 0.045, 0.18)
+    local tween = TweenService:Create(bullet, TweenInfo.new(duration, Enum.EasingStyle.Linear), {
+        CFrame = CFrame.lookAt(endPos, endPos + direction),
+    })
+    tween:Play()
+
+    Debris:AddItem(bullet, duration + 0.16)
+end
+
+local function impactSpark(position, accent)
+    if typeof(position) ~= "Vector3" then return end
+    local spark = makePart("TintaImpactSpark", Vector3.new(0.30, 0.30, 0.30), CFrame.new(position), accent or ORANGE, 0.03)
+    spark.Shape = Enum.PartType.Ball
+
+    local attachment = Instance.new("Attachment")
+    attachment.Parent = spark
+    local burst = Instance.new("ParticleEmitter")
+    burst.Rate = 0
+    burst.Lifetime = NumberRange.new(0.08, 0.18)
+    burst.Speed = NumberRange.new(5, 14)
+    burst.SpreadAngle = Vector2.new(180, 180)
+    burst.LightEmission = 1
+    burst.Color = ColorSequence.new(FIRE_YELLOW, accent or ORANGE)
+    burst.Size = NumberSequence.new({
+        NumberSequenceKeypoint.new(0, 0.15),
+        NumberSequenceKeypoint.new(1, 0),
+    })
+    burst.Parent = attachment
+    burst:Emit(7)
+    Debris:AddItem(spark, 0.15)
 end
 
 local function slashSegment(origin, direction, sideOffset, verticalOffset, color)
@@ -136,7 +221,7 @@ local function slashSegment(origin, direction, sideOffset, verticalOffset, color
     local startPos = origin + right * sideOffset + Vector3.new(0, verticalOffset, 0)
     local endPos = startPos + direction * 5.2 + right * (-sideOffset * 0.7)
     local distance = (endPos - startPos).Magnitude
-    local slash = makeFlashPart(
+    local slash = makePart(
         "TintaMeleeSlash",
         Vector3.new(0.10, 0.22, distance),
         CFrame.lookAt((startPos + endPos) / 2, endPos),
@@ -154,12 +239,14 @@ local function meleeVisual(attackerUserId, origin, direction, color)
     slashSegment(origin, direction, 1.0, -0.25, color)
 
     local attacker = Players:GetPlayerByUserId(tonumber(attackerUserId) or 0)
-    if attacker and attacker.Character then animateShoulder(attacker.Character, "melee") end
     if attacker == player then cameraKick(1.35) end
 end
 
 shotFX.OnClientEvent:Connect(function(origin, destination, color)
-    muzzleFlash(origin, destination, typeof(color) == "Color3" and color or CYAN)
+    local accent = typeof(color) == "Color3" and color or CYAN
+    emitMuzzleFire(origin, destination, accent)
+    fieryProjectile(origin, destination, accent)
+    impactSpark(destination, accent)
 end)
 
 ammoState.OnClientEvent:Connect(function(data)
@@ -170,7 +257,6 @@ ammoState.OnClientEvent:Connect(function(data)
 
     local previous = lastAmmo[weaponId]
     if previous and ammo < previous and data.Reloading ~= true then
-        animateShoulder(player.Character, "fire")
         cameraKick(0.85)
     end
     lastAmmo[weaponId] = ammo
@@ -182,4 +268,4 @@ player.CharacterAdded:Connect(function()
     lastAmmo = {}
 end)
 
-print("[TintaFinal] Combat FX activo: muzzle flash, retroceso y animación de melee.")
+print("[TintaFinal] Combat FX v2: munición de fuego, destello, impacto y retroceso activos.")
