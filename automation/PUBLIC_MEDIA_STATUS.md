@@ -6,5 +6,5 @@
 - Nueva imageId: NO_GENERADA
 - River imageId objetivo: 80353689172158
 - Scope legacy requerido: legacy-universe:manage
-- Actualizado UTC: 2026-08-15T03:24:30.532040+00:00
+- Actualizado UTC: 2026-08-15T04:14:15.110718+00:00
 - Detalle: Existe una carga ya aceptada por Roblox; se bloqueó cualquier nueva carga y se espera moderación/propagación.
