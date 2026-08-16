@@ -1,6 +1,6 @@
 {
   "mode": "PENDIENTE_ROBLOX",
-  "checkedAt": "2026-08-16T04:21:19.419320+00:00",
+  "checkedAt": "2026-08-16T05:12:16.895288+00:00",
   "languageDiscovery": {
     "statusCode": 200,
     "body": "{\"languageFamily\":{\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\"},\"defaultLocale\":{\"id\":2,\"locale\":\"es_es\",\"localeCode\":\"es_es\",\"name\":\"Spanish (Spain)\",\"nativeName\":\"Español (España)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}},\"childLocales\":[{\"id\":2,\"locale\":\"es_es\",\"localeCode\":\"es_es\",\"name\":\"Spanish (Spain)\",\"nativeName\":\"Español (España)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}},{\"id\":51,\"locale\":\"es_mx\",\"localeCode\":\"es_mx\",\"name\":\"Spanish (Mexico)\",\"nativeName\":\"Español (México)\",\"language\":{\"id\":148,\"name\":\"Spanish\",\"nativeName\":\"Español\",\"languageCode\":\"es\",\"isRightToLeft\":false}}]}",
